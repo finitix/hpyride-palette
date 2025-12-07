@@ -57,7 +57,8 @@ const AvailableRidesPage = () => {
         .from('rides')
         .select(`
           *,
-          vehicles (category, name, number)
+          vehicles (category, name, number),
+          profiles:user_id (full_name)
         `)
         .eq('status', 'published')
         .gte('ride_date', new Date().toISOString().split('T')[0])
@@ -69,7 +70,10 @@ const AvailableRidesPage = () => {
 
       const { data, error } = await query;
       
-      if (error) throw error;
+      if (error) {
+        console.error('Query error:', error);
+        throw error;
+      }
       setRides((data || []) as any);
     } catch (error) {
       console.error('Error fetching rides:', error);

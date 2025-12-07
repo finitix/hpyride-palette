@@ -115,12 +115,23 @@
   }
 
   /* Hide Mapbox watermark/attribution */
-  .mapboxgl-ctrl-attrib {
+  .mapboxgl-ctrl-attrib,
+  .mapboxgl-ctrl-attrib-inner,
+  .mapboxgl-ctrl-attrib.mapboxgl-compact {
     display: none !important;
   }
   
   .mapboxgl-ctrl-logo {
     display: none !important;
+  }
+
+  .mapboxgl-ctrl-bottom-left,
+  .mapboxgl-ctrl-bottom-right {
+    z-index: 1 !important;
+  }
+
+  .mapboxgl-canvas-container {
+    z-index: 1 !important;
   }
 }
 
