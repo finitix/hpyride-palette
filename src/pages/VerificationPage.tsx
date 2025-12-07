@@ -62,6 +62,7 @@ const VerificationPage = () => {
 
   const startCamera = async () => {
     setShowCamera(true);
+    setFaceDetected(false);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { facingMode: "user", width: 640, height: 480 },
@@ -69,6 +70,10 @@ const VerificationPage = () => {
       });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        // Simulate face detection after video loads
+        videoRef.current.onloadedmetadata = () => {
+          setTimeout(() => setFaceDetected(true), 1500);
+        };
       }
     } catch (err) {
       toast.error("Camera access denied");

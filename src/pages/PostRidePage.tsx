@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { ArrowLeft, Check, Car, Bike, ChevronRight, Upload, X, CheckCircle } from "lucide-react";
+import { ArrowLeft, Check, Car, Bike, ChevronRight, Upload, X, CheckCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -357,7 +357,8 @@ const PostRidePage = () => {
           female_only: femaleOnly,
           luggage_allowed: luggageAllowed,
           pickup_flexibility: pickupFlexibility,
-          status: 'published',
+          status: 'pending',
+          verification_status: 'pending',
         });
 
       if (rideError) throw rideError;
@@ -419,12 +420,12 @@ const PostRidePage = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center animate-fade-in">
-          <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 animate-scale-in">
-            <Check className="w-10 h-10 text-white" />
+          <div className="w-20 h-20 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-6 animate-scale-in">
+            <Clock className="w-10 h-10 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">Ride Published!</h2>
-          <p className="text-muted-foreground mb-2">Your ride is now live on the map</p>
-          <p className="text-sm text-muted-foreground mt-4">Thank you for using HpyRide</p>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Ride Submitted!</h2>
+          <p className="text-muted-foreground mb-2">Your ride is pending admin approval</p>
+          <p className="text-sm text-muted-foreground mt-4">You'll be notified once it's published</p>
         </div>
       </div>
     );
