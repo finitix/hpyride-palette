@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import LocationInput from "@/components/LocationInput";
 
-mapboxgl.accessToken = "pk.eyJ1IjoiZGFybHoiLCJhIjoiY21pbDVzN3VqMTVncjNlcjQ1MGxsYWhoZyJ9.GOk93pZDh2T7inUnOXYF9A";
+mapboxgl.accessToken = "pk.eyJ1IjoiZGFybHoiLCJhIjoiY21pbDVzN3VqMTVncjNlcjQ1MGxsYWhoZyJ9.GOk93pZDh2T5inUnOXYF9A";
 
 const BookingPage = () => {
   const navigate = useNavigate();

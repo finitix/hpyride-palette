@@ -7,7 +7,7 @@ interface LocationSuggestion {
   text: string;
 }
 
-const MAPBOX_TOKEN = "pk.eyJ1IjoiZGFybHoiLCJhIjoiY21pbDVzN3VqMTVncjNlcjQ1MGxsYWhoZyJ9.GOk93pZDh2T7inUnOXYF9A";
+const MAPBOX_TOKEN = "pk.eyJ1IjoiZGFybHoiLCJhIjoiY21pbDVzN3VqMTVncjNlcjQ1MGxsYWhoZyJ9.GOk93pZDh2T5inUnOXYF9A";
 
 export const useLocationSearch = () => {
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
