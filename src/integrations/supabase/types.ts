@@ -231,6 +231,54 @@ export type Database = {
         }
         Relationships: []
       }
+      reviews: {
+        Row: {
+          booking_id: string
+          comment: string | null
+          created_at: string
+          driver_id: string
+          id: string
+          rating: number
+          reviewer_id: string
+          ride_id: string
+        }
+        Insert: {
+          booking_id: string
+          comment?: string | null
+          created_at?: string
+          driver_id: string
+          id?: string
+          rating: number
+          reviewer_id: string
+          ride_id: string
+        }
+        Update: {
+          booking_id?: string
+          comment?: string | null
+          created_at?: string
+          driver_id?: string
+          id?: string
+          rating?: number
+          reviewer_id?: string
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rides: {
         Row: {
           created_at: string
