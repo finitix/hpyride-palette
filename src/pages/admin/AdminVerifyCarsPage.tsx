@@ -51,6 +51,18 @@ const AdminVerifyCarsPage = () => {
       return;
     }
     fetchCars();
+
+    // Realtime subscription
+    const channel = supabase
+      .channel('pre-owned-cars-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pre_owned_cars' }, () => {
+        fetchCars();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [admin, navigate, activeTab]);
 
   const fetchCars = async () => {

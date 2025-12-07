@@ -44,6 +44,18 @@ const AdminVerifyUsersPage = () => {
       return;
     }
     fetchVerifications();
+
+    // Realtime subscription
+    const channel = supabase
+      .channel('user-verifications-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_verifications' }, () => {
+        fetchVerifications();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [admin, navigate, activeTab]);
 
   const fetchVerifications = async () => {
