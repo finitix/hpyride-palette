@@ -4,8 +4,8 @@ import { Menu, Check, X, Eye, User, Calendar, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import { useAdminApi } from "@/hooks/useAdminApi";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import { toast } from "sonner";
 
@@ -29,6 +29,7 @@ interface Verification {
 const AdminVerifyUsersPage = () => {
   const navigate = useNavigate();
   const { admin } = useAdminAuth();
+  const { callAdminApi } = useAdminApi();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'all'>('pending');
   const [verifications, setVerifications] = useState<Verification[]>([]);
@@ -44,46 +45,18 @@ const AdminVerifyUsersPage = () => {
       return;
     }
     fetchVerifications();
-
-    // Realtime subscription
-    const channel = supabase
-      .channel('user-verifications-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_verifications' }, () => {
-        fetchVerifications();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [admin, navigate, activeTab]);
 
   const fetchVerifications = async () => {
     setLoading(true);
-    let query = supabase
-      .from('user_verifications')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (activeTab === 'pending') {
-      query = query.eq('status', 'pending');
-    }
-
-    const { data, error } = await query;
-
-    if (!error && data) {
-      // Fetch profiles for each verification
-      const verificationsWithProfiles = await Promise.all(
-        data.map(async (v) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('email, phone')
-            .eq('user_id', v.user_id)
-            .single();
-          return { ...v, profile };
-        })
-      );
-      setVerifications(verificationsWithProfiles as Verification[]);
+    try {
+      const data = await callAdminApi('get_verifications', { 
+        status: activeTab === 'pending' ? 'pending' : null 
+      });
+      setVerifications(data || []);
+    } catch (error: any) {
+      console.error('Error fetching verifications:', error);
+      toast.error('Failed to fetch verifications');
     }
     setLoading(false);
   };
@@ -91,23 +64,10 @@ const AdminVerifyUsersPage = () => {
   const handleApprove = async (verification: Verification) => {
     setProcessing(true);
     try {
-      const { error } = await supabase
-        .from('user_verifications')
-        .update({ 
-          status: 'verified',
-          reviewed_by: admin?.id,
-          reviewed_at: new Date().toISOString()
-        })
-        .eq('id', verification.id);
-
-      if (error) throw error;
-
-      // Update profile is_verified
-      await supabase
-        .from('profiles')
-        .update({ is_verified: true })
-        .eq('user_id', verification.user_id);
-
+      await callAdminApi('approve_verification', { 
+        id: verification.id, 
+        user_id: verification.user_id 
+      });
       toast.success("User verified successfully");
       fetchVerifications();
       setSelectedVerification(null);
@@ -126,18 +86,10 @@ const AdminVerifyUsersPage = () => {
 
     setProcessing(true);
     try {
-      const { error } = await supabase
-        .from('user_verifications')
-        .update({ 
-          status: 'rejected',
-          rejection_reason: rejectReason,
-          reviewed_by: admin?.id,
-          reviewed_at: new Date().toISOString()
-        })
-        .eq('id', selectedVerification.id);
-
-      if (error) throw error;
-
+      await callAdminApi('reject_verification', { 
+        id: selectedVerification.id,
+        reason: rejectReason 
+      });
       toast.success("Verification rejected");
       setRejectDialogOpen(false);
       setRejectReason("");

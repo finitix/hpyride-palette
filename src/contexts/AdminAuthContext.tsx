@@ -64,6 +64,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
       setAdmin(adminUser);
       localStorage.setItem('adminUser', JSON.stringify(adminUser));
+      localStorage.setItem('adminPassword', password); // Store for API calls
       
       return { error: null };
     } catch (err: any) {
@@ -75,6 +76,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const signOut = () => {
     setAdmin(null);
     localStorage.removeItem('adminUser');
+    localStorage.removeItem('adminPassword');
   };
 
   return (
