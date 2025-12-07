@@ -22,55 +22,107 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    checkAdminSession();
+  }, []);
+
+  const checkAdminSession = async () => {
     // Check for stored admin session
     const storedAdmin = localStorage.getItem('adminUser');
     if (storedAdmin) {
-      setAdmin(JSON.parse(storedAdmin));
+      const adminData = JSON.parse(storedAdmin);
+      
+      // Verify Supabase session is still valid
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && session.user.email === adminData.email) {
+        setAdmin(adminData);
+      } else {
+        // Clear stale admin data
+        localStorage.removeItem('adminUser');
+      }
     }
     setLoading(false);
-  }, []);
+  };
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase
+      // First verify admin exists in admin_users table
+      const { data: adminData, error: adminError } = await supabase
         .from('admin_users')
         .select('*')
         .eq('email', email)
         .eq('is_active', true)
         .single();
 
-      if (error || !data) {
+      if (adminError || !adminData) {
+        return { error: "Invalid admin credentials" };
+      }
+
+      // Check password hash matches
+      if (adminData.password_hash !== password) {
         return { error: "Invalid credentials" };
       }
 
-      // Simple password check (in production, use proper hashing)
-      if (data.password_hash !== password) {
-        return { error: "Invalid credentials" };
+      // Sign in to Supabase Auth (create account if doesn't exist)
+      let authResult = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      // If user doesn't exist in auth, create them
+      if (authResult.error && authResult.error.message.includes('Invalid login credentials')) {
+        const signUpResult = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: adminData.name,
+              is_admin: true,
+            }
+          }
+        });
+        
+        if (signUpResult.error) {
+          // Try signing in again in case user exists but with different password
+          authResult = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          
+          if (authResult.error) {
+            return { error: "Authentication failed. Please check credentials." };
+          }
+        } else {
+          authResult = signUpResult;
+        }
+      } else if (authResult.error) {
+        return { error: authResult.error.message };
       }
 
       const adminUser: AdminUser = {
-        id: data.id,
-        email: data.email,
-        name: data.name,
-        role: data.role,
+        id: adminData.id,
+        email: adminData.email,
+        name: adminData.name,
+        role: adminData.role,
       };
 
       // Update last login
       await supabase
         .from('admin_users')
         .update({ last_login: new Date().toISOString() })
-        .eq('id', data.id);
+        .eq('id', adminData.id);
 
       setAdmin(adminUser);
       localStorage.setItem('adminUser', JSON.stringify(adminUser));
       
       return { error: null };
-    } catch (err) {
+    } catch (err: any) {
+      console.error('Admin sign in error:', err);
       return { error: "Something went wrong" };
     }
   };
 
-  const signOut = () => {
+  const signOut = async () => {
+    await supabase.auth.signOut();
     setAdmin(null);
     localStorage.removeItem('adminUser');
   };
