@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronRight, MapPin, Camera, Upload, Check } from "lucide-react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import { ArrowLeft, ChevronRight, MapPin, Camera, Upload, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +14,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import LocationInput from "@/components/LocationInput";
 import { useGeolocation } from "@/hooks/useGeolocation";
+
+mapboxgl.accessToken = "pk.eyJ1IjoiZGFybHoiLCJhIjoiY21pbDVzN3VqMTVncjNlcjQ1MGxsYWhoZyJ9.GOk93pZDh2T5inUnOXYF9A";
 
 const carBrands = ["Maruti", "Hyundai", "Tata", "Honda", "Toyota", "Mahindra", "Kia", "MG", "Volkswagen", "Skoda", "Ford", "Renault", "Nissan", "BMW", "Mercedes", "Audi"];
 const fuelTypes = ["Petrol", "Diesel", "CNG", "Electric", "Hybrid"];
@@ -26,6 +30,12 @@ const ListCarPage = () => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState<{ file: File; type: string; preview: string }[]>([]);
+  const [documents, setDocuments] = useState<{ file: File; type: string; preview: string }[]>([]);
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const marker = useRef<mapboxgl.Marker | null>(null);
+  const [mapLat, setMapLat] = useState<number | null>(null);
+  const [mapLng, setMapLng] = useState<number | null>(null);
 
   const [formData, setFormData] = useState({
     brand: "",
@@ -45,6 +55,64 @@ const ListCarPage = () => {
     bodyType: "",
   });
 
+  // Initialize map for step 4
+  useEffect(() => {
+    if (step !== 4 || !mapContainer.current || map.current) return;
+
+    const centerLat = mapLat || latitude || 20.5937;
+    const centerLng = mapLng || longitude || 78.9629;
+
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: "mapbox://styles/mapbox/dark-v11",
+      center: [centerLng, centerLat],
+      zoom: 14,
+      attributionControl: false,
+    });
+
+    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+    // Add marker
+    marker.current = new mapboxgl.Marker({ color: '#FF0000', draggable: true })
+      .setLngLat([centerLng, centerLat])
+      .addTo(map.current);
+
+    marker.current.on('dragend', () => {
+      const lngLat = marker.current?.getLngLat();
+      if (lngLat) {
+        setMapLat(lngLat.lat);
+        setMapLng(lngLat.lng);
+        reverseGeocode(lngLat.lat, lngLat.lng);
+      }
+    });
+
+    map.current.on('click', (e) => {
+      marker.current?.setLngLat(e.lngLat);
+      setMapLat(e.lngLat.lat);
+      setMapLng(e.lngLat.lng);
+      reverseGeocode(e.lngLat.lat, e.lngLat.lng);
+    });
+
+    return () => {
+      map.current?.remove();
+      map.current = null;
+    };
+  }, [step, latitude, longitude]);
+
+  const reverseGeocode = async (lat: number, lng: number) => {
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxgl.accessToken}`
+      );
+      const data = await response.json();
+      if (data.features?.[0]) {
+        setFormData(prev => ({ ...prev, location: data.features[0].place_name }));
+      }
+    } catch (error) {
+      console.error('Reverse geocode error:', error);
+    }
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
     const files = e.target.files;
     if (!files) return;
@@ -52,6 +120,16 @@ const ListCarPage = () => {
     Array.from(files).forEach(file => {
       const preview = URL.createObjectURL(file);
       setImages(prev => [...prev, { file, type, preview }]);
+    });
+  };
+
+  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach(file => {
+      const preview = URL.createObjectURL(file);
+      setDocuments(prev => [...prev, { file, type, preview }]);
     });
   };
 
@@ -63,7 +141,6 @@ const ListCarPage = () => {
 
     setLoading(true);
     try {
-      // Insert car listing
       const { data: carData, error: carError } = await supabase
         .from('pre_owned_cars')
         .insert({
@@ -82,8 +159,8 @@ const ListCarPage = () => {
           expected_price: parseFloat(formData.expectedPrice),
           description: formData.description,
           location: formData.location,
-          location_lat: latitude,
-          location_lng: longitude,
+          location_lat: mapLat || latitude,
+          location_lng: mapLng || longitude,
           body_type: formData.bodyType,
           status: 'active',
         })
@@ -95,7 +172,7 @@ const ListCarPage = () => {
       // Upload images
       for (const img of images) {
         const fileName = `${user.id}/${carData.id}/${Date.now()}-${img.file.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('car-listings')
           .upload(fileName, img.file);
 
@@ -115,6 +192,29 @@ const ListCarPage = () => {
         });
       }
 
+      // Upload documents
+      for (const doc of documents) {
+        const fileName = `${user.id}/${carData.id}/docs/${Date.now()}-${doc.file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('car-listings')
+          .upload(fileName, doc.file);
+
+        if (uploadError) {
+          console.error('Document upload error:', uploadError);
+          continue;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('car-listings')
+          .getPublicUrl(fileName);
+
+        await supabase.from('car_images').insert({
+          car_id: carData.id,
+          image_url: publicUrl,
+          image_type: doc.type,
+        });
+      }
+
       toast.success("Car listed successfully!");
       navigate("/pre-owned/success");
     } catch (error) {
@@ -128,7 +228,13 @@ const ListCarPage = () => {
   const handleUseCurrentLocation = () => {
     requestLocation();
     if (latitude && longitude) {
-      setFormData(prev => ({ ...prev, location: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}` }));
+      setMapLat(latitude);
+      setMapLng(longitude);
+      if (map.current && marker.current) {
+        map.current.flyTo({ center: [longitude, latitude], zoom: 15 });
+        marker.current.setLngLat([longitude, latitude]);
+      }
+      reverseGeocode(latitude, longitude);
     }
   };
 
@@ -258,11 +364,13 @@ const ListCarPage = () => {
           </div>
         )}
 
-        {/* Step 2: Photos Upload */}
+        {/* Step 2: Photos & Documents Upload */}
         {step === 2 && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold">Upload Photos</h2>
-            <p className="text-sm text-muted-foreground">Add 6-15 photos of your car</p>
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-bold">Upload Photos</h2>
+              <p className="text-sm text-muted-foreground">Add 6-15 photos of your car</p>
+            </div>
 
             <div className="grid grid-cols-3 gap-3">
               {images.map((img, i) => (
@@ -270,7 +378,7 @@ const ListCarPage = () => {
                   <img src={img.preview} alt="" className="w-full h-full object-cover" />
                   <button
                     onClick={() => setImages(prev => prev.filter((_, idx) => idx !== i))}
-                    className="absolute top-1 right-1 w-6 h-6 bg-background rounded-full flex items-center justify-center"
+                    className="absolute top-1 right-1 w-6 h-6 bg-background rounded-full flex items-center justify-center text-sm"
                   >
                     ×
                   </button>
@@ -291,6 +399,48 @@ const ListCarPage = () => {
                 <li>• Include interior shots</li>
                 <li>• Show any damages clearly</li>
               </ul>
+            </div>
+
+            {/* Document Upload Section */}
+            <div className="pt-4 border-t border-border">
+              <h2 className="text-xl font-bold mb-2">Upload Documents</h2>
+              <p className="text-sm text-muted-foreground mb-4">Upload RC book and other documents (optional)</p>
+
+              <div className="space-y-3">
+                {documents.map((doc, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 bg-secondary rounded-xl">
+                    <FileText className="w-8 h-8 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium truncate">{doc.file.name}</p>
+                      <p className="text-xs text-muted-foreground">{doc.type}</p>
+                    </div>
+                    <button
+                      onClick={() => setDocuments(prev => prev.filter((_, idx) => idx !== i))}
+                      className="w-6 h-6 bg-background rounded-full flex items-center justify-center text-sm"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+
+                <label className="flex items-center gap-3 p-4 border-2 border-dashed border-muted-foreground/30 rounded-xl cursor-pointer hover:border-foreground/50 transition-colors">
+                  <Upload className="w-6 h-6 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Upload RC Book</p>
+                    <p className="text-xs text-muted-foreground">PDF, JPG or PNG</p>
+                  </div>
+                  <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => handleDocumentUpload(e, 'rc_book')} />
+                </label>
+
+                <label className="flex items-center gap-3 p-4 border-2 border-dashed border-muted-foreground/30 rounded-xl cursor-pointer hover:border-foreground/50 transition-colors">
+                  <Upload className="w-6 h-6 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Upload Insurance</p>
+                    <p className="text-xs text-muted-foreground">PDF, JPG or PNG</p>
+                  </div>
+                  <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => handleDocumentUpload(e, 'insurance')} />
+                </label>
+              </div>
             </div>
 
             <Button variant="hero" className="w-full mt-6" onClick={() => setStep(3)} disabled={images.length < 1}>
@@ -368,9 +518,14 @@ const ListCarPage = () => {
               onUseMyLocation={handleUseCurrentLocation}
             />
 
-            <div className="h-48 bg-muted rounded-xl flex items-center justify-center">
-              <MapPin className="w-8 h-8 text-muted-foreground" />
-            </div>
+            <div 
+              ref={mapContainer} 
+              className="h-56 rounded-xl overflow-hidden border border-border"
+            />
+
+            <p className="text-xs text-muted-foreground text-center">
+              Tap on map or drag marker to set exact location
+            </p>
 
             <Button
               variant="hero"
