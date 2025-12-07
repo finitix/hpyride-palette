@@ -94,6 +94,155 @@ export type Database = {
           },
         ]
       }
+      car_chats: {
+        Row: {
+          car_id: string
+          created_at: string
+          id: string
+          message: string
+          receiver_id: string
+          sender_id: string
+        }
+        Insert: {
+          car_id: string
+          created_at?: string
+          id?: string
+          message: string
+          receiver_id: string
+          sender_id: string
+        }
+        Update: {
+          car_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          receiver_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "car_chats_car_id_fkey"
+            columns: ["car_id"]
+            isOneToOne: false
+            referencedRelation: "pre_owned_cars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      car_images: {
+        Row: {
+          car_id: string
+          created_at: string
+          id: string
+          image_type: string
+          image_url: string
+        }
+        Insert: {
+          car_id: string
+          created_at?: string
+          id?: string
+          image_type: string
+          image_url: string
+        }
+        Update: {
+          car_id?: string
+          created_at?: string
+          id?: string
+          image_type?: string
+          image_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "car_images_car_id_fkey"
+            columns: ["car_id"]
+            isOneToOne: false
+            referencedRelation: "pre_owned_cars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      car_interests: {
+        Row: {
+          buyer_id: string
+          buyer_name: string
+          buyer_phone: string
+          car_id: string
+          created_at: string
+          id: string
+          message: string | null
+          preferred_call_time: string | null
+          seller_viewed: boolean | null
+          status: string | null
+        }
+        Insert: {
+          buyer_id: string
+          buyer_name: string
+          buyer_phone: string
+          car_id: string
+          created_at?: string
+          id?: string
+          message?: string | null
+          preferred_call_time?: string | null
+          seller_viewed?: boolean | null
+          status?: string | null
+        }
+        Update: {
+          buyer_id?: string
+          buyer_name?: string
+          buyer_phone?: string
+          car_id?: string
+          created_at?: string
+          id?: string
+          message?: string | null
+          preferred_call_time?: string | null
+          seller_viewed?: boolean | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "car_interests_car_id_fkey"
+            columns: ["car_id"]
+            isOneToOne: false
+            referencedRelation: "pre_owned_cars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      car_reports: {
+        Row: {
+          car_id: string
+          created_at: string
+          details: string | null
+          id: string
+          reason: string
+          reporter_id: string
+        }
+        Insert: {
+          car_id: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: string
+          reporter_id: string
+        }
+        Update: {
+          car_id?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: string
+          reporter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "car_reports_car_id_fkey"
+            columns: ["car_id"]
+            isOneToOne: false
+            referencedRelation: "pre_owned_cars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           booking_id: string
@@ -192,6 +341,81 @@ export type Database = {
           title?: string
           type?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      pre_owned_cars: {
+        Row: {
+          body_type: string | null
+          brand: string
+          color: string | null
+          created_at: string
+          description: string | null
+          expected_price: number
+          fuel_type: string
+          id: string
+          insurance_valid_till: string | null
+          km_driven: number
+          location: string
+          location_lat: number | null
+          location_lng: number | null
+          model: string
+          ownership: string
+          service_history_available: boolean | null
+          status: string | null
+          transmission: string
+          updated_at: string
+          user_id: string
+          variant: string | null
+          year_of_purchase: number
+        }
+        Insert: {
+          body_type?: string | null
+          brand: string
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          expected_price: number
+          fuel_type: string
+          id?: string
+          insurance_valid_till?: string | null
+          km_driven: number
+          location: string
+          location_lat?: number | null
+          location_lng?: number | null
+          model: string
+          ownership: string
+          service_history_available?: boolean | null
+          status?: string | null
+          transmission: string
+          updated_at?: string
+          user_id: string
+          variant?: string | null
+          year_of_purchase: number
+        }
+        Update: {
+          body_type?: string | null
+          brand?: string
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          expected_price?: number
+          fuel_type?: string
+          id?: string
+          insurance_valid_till?: string | null
+          km_driven?: number
+          location?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          model?: string
+          ownership?: string
+          service_history_available?: boolean | null
+          status?: string | null
+          transmission?: string
+          updated_at?: string
+          user_id?: string
+          variant?: string | null
+          year_of_purchase?: number
         }
         Relationships: []
       }
