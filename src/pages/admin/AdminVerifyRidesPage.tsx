@@ -53,6 +53,18 @@ const AdminVerifyRidesPage = () => {
       return;
     }
     fetchRides();
+
+    // Realtime subscription
+    const channel = supabase
+      .channel('rides-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rides' }, () => {
+        fetchRides();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [admin, navigate, activeTab]);
 
   const fetchRides = async () => {
