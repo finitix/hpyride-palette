@@ -22,30 +22,17 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkAdminSession();
-  }, []);
-
-  const checkAdminSession = async () => {
     // Check for stored admin session
     const storedAdmin = localStorage.getItem('adminUser');
     if (storedAdmin) {
-      const adminData = JSON.parse(storedAdmin);
-      
-      // Verify Supabase session is still valid
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session && session.user.email === adminData.email) {
-        setAdmin(adminData);
-      } else {
-        // Clear stale admin data
-        localStorage.removeItem('adminUser');
-      }
+      setAdmin(JSON.parse(storedAdmin));
     }
     setLoading(false);
-  };
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
-      // First verify admin exists in admin_users table
+      // Verify admin exists in admin_users table
       const { data: adminData, error: adminError } = await supabase
         .from('admin_users')
         .select('*')
@@ -60,42 +47,6 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       // Check password hash matches
       if (adminData.password_hash !== password) {
         return { error: "Invalid credentials" };
-      }
-
-      // Sign in to Supabase Auth (create account if doesn't exist)
-      let authResult = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      // If user doesn't exist in auth, create them
-      if (authResult.error && authResult.error.message.includes('Invalid login credentials')) {
-        const signUpResult = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: adminData.name,
-              is_admin: true,
-            }
-          }
-        });
-        
-        if (signUpResult.error) {
-          // Try signing in again in case user exists but with different password
-          authResult = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          
-          if (authResult.error) {
-            return { error: "Authentication failed. Please check credentials." };
-          }
-        } else {
-          authResult = signUpResult;
-        }
-      } else if (authResult.error) {
-        return { error: authResult.error.message };
       }
 
       const adminUser: AdminUser = {
@@ -121,8 +72,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  const signOut = () => {
     setAdmin(null);
     localStorage.removeItem('adminUser');
   };
