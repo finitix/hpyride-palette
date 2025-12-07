@@ -4,8 +4,8 @@ import { Menu, Check, X, Eye, Car, MapPin, Calendar, IndianRupee } from "lucide-
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import { useAdminApi } from "@/hooks/useAdminApi";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import { toast } from "sonner";
 
@@ -36,6 +36,7 @@ interface CarListing {
 const AdminVerifyCarsPage = () => {
   const navigate = useNavigate();
   const { admin } = useAdminAuth();
+  const { callAdminApi } = useAdminApi();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'all'>('pending');
   const [cars, setCars] = useState<CarListing[]>([]);
@@ -51,45 +52,18 @@ const AdminVerifyCarsPage = () => {
       return;
     }
     fetchCars();
-
-    // Realtime subscription
-    const channel = supabase
-      .channel('pre-owned-cars-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pre_owned_cars' }, () => {
-        fetchCars();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [admin, navigate, activeTab]);
 
   const fetchCars = async () => {
     setLoading(true);
-    let query = supabase
-      .from('pre_owned_cars')
-      .select('*, images:car_images(image_url, image_type)')
-      .order('created_at', { ascending: false });
-
-    if (activeTab === 'pending') {
-      query = query.eq('verification_status', 'pending');
-    }
-
-    const { data, error } = await query;
-
-    if (!error && data) {
-      const carsWithProfiles = await Promise.all(
-        data.map(async (car) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name, email, phone')
-            .eq('user_id', car.user_id)
-            .single();
-          return { ...car, profile };
-        })
-      );
-      setCars(carsWithProfiles as CarListing[]);
+    try {
+      const data = await callAdminApi('get_cars', { 
+        status: activeTab === 'pending' ? 'pending' : null 
+      });
+      setCars(data || []);
+    } catch (error: any) {
+      console.error('Error fetching cars:', error);
+      toast.error('Failed to fetch car listings');
     }
     setLoading(false);
   };
@@ -97,13 +71,7 @@ const AdminVerifyCarsPage = () => {
   const handleApprove = async (car: CarListing) => {
     setProcessing(true);
     try {
-      const { error } = await supabase
-        .from('pre_owned_cars')
-        .update({ verification_status: 'verified' })
-        .eq('id', car.id);
-
-      if (error) throw error;
-
+      await callAdminApi('approve_car', { id: car.id });
       toast.success("Car listing approved");
       fetchCars();
       setSelectedCar(null);
@@ -122,16 +90,10 @@ const AdminVerifyCarsPage = () => {
 
     setProcessing(true);
     try {
-      const { error } = await supabase
-        .from('pre_owned_cars')
-        .update({ 
-          verification_status: 'rejected',
-          rejection_reason: rejectReason,
-        })
-        .eq('id', selectedCar.id);
-
-      if (error) throw error;
-
+      await callAdminApi('reject_car', { 
+        id: selectedCar.id,
+        reason: rejectReason 
+      });
       toast.success("Car listing rejected");
       setRejectDialogOpen(false);
       setRejectReason("");

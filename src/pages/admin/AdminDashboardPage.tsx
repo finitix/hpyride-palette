@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
-  Users, Car, MapPin, AlertTriangle, CheckCircle, Clock, 
-  TrendingUp, BarChart3, Menu, X, LogOut, Settings,
-  Shield, FileCheck, CarFront
+  Users, Car, MapPin, CheckCircle, Clock, 
+  TrendingUp, BarChart3, Menu,
+  Shield, CarFront
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import { useAdminApi } from "@/hooks/useAdminApi";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 
 interface DashboardStats {
@@ -22,6 +22,7 @@ interface DashboardStats {
 const AdminDashboardPage = () => {
   const navigate = useNavigate();
   const { admin } = useAdminAuth();
+  const { callAdminApi } = useAdminApi();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     totalRides: 0,
@@ -44,24 +45,15 @@ const AdminDashboardPage = () => {
 
   const fetchStats = async () => {
     try {
-      const [ridesRes, usersRes, verificationsRes, vehiclesRes, carsRes] = await Promise.all([
-        supabase.from('rides').select('status', { count: 'exact' }),
-        supabase.from('profiles').select('*', { count: 'exact' }),
-        supabase.from('user_verifications').select('*', { count: 'exact' }).eq('status', 'pending'),
-        supabase.from('vehicles').select('*', { count: 'exact' }),
-        supabase.from('pre_owned_cars').select('*', { count: 'exact' }).eq('verification_status', 'pending'),
-      ]);
-
-      const rides = ridesRes.data || [];
-      
+      const data = await callAdminApi('get_stats');
       setStats({
-        totalRides: ridesRes.count || 0,
-        completedRides: rides.filter(r => r.status === 'completed').length,
-        pendingRides: rides.filter(r => r.status === 'pending').length,
-        totalUsers: usersRes.count || 0,
-        pendingVerifications: verificationsRes.count || 0,
-        totalVehicles: vehiclesRes.count || 0,
-        pendingCarListings: carsRes.count || 0,
+        totalRides: data.totalRides || 0,
+        completedRides: 0,
+        pendingRides: data.pendingRides || 0,
+        totalUsers: data.totalUsers || 0,
+        pendingVerifications: data.pendingVerifications || 0,
+        totalVehicles: data.totalVehicles || 0,
+        pendingCarListings: data.pendingCars || 0,
       });
     } catch (error) {
       console.error('Error fetching stats:', error);

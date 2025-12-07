@@ -4,8 +4,8 @@ import { Menu, Check, X, Eye, MapPin, Calendar, Clock, Car } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import { useAdminApi } from "@/hooks/useAdminApi";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import { toast } from "sonner";
 
@@ -38,6 +38,7 @@ interface Ride {
 const AdminVerifyRidesPage = () => {
   const navigate = useNavigate();
   const { admin } = useAdminAuth();
+  const { callAdminApi } = useAdminApi();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'all'>('pending');
   const [rides, setRides] = useState<Ride[]>([]);
@@ -53,45 +54,18 @@ const AdminVerifyRidesPage = () => {
       return;
     }
     fetchRides();
-
-    // Realtime subscription
-    const channel = supabase
-      .channel('rides-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rides' }, () => {
-        fetchRides();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [admin, navigate, activeTab]);
 
   const fetchRides = async () => {
     setLoading(true);
-    let query = supabase
-      .from('rides')
-      .select('*, vehicle:vehicles(name, number, category, front_image_url)')
-      .order('created_at', { ascending: false });
-
-    if (activeTab === 'pending') {
-      query = query.eq('verification_status', 'pending');
-    }
-
-    const { data, error } = await query;
-
-    if (!error && data) {
-      const ridesWithProfiles = await Promise.all(
-        data.map(async (r) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name, email')
-            .eq('user_id', r.user_id)
-            .single();
-          return { ...r, profile };
-        })
-      );
-      setRides(ridesWithProfiles as Ride[]);
+    try {
+      const data = await callAdminApi('get_rides', { 
+        status: activeTab === 'pending' ? 'pending' : null 
+      });
+      setRides(data || []);
+    } catch (error: any) {
+      console.error('Error fetching rides:', error);
+      toast.error('Failed to fetch rides');
     }
     setLoading(false);
   };
@@ -99,16 +73,7 @@ const AdminVerifyRidesPage = () => {
   const handleApprove = async (ride: Ride) => {
     setProcessing(true);
     try {
-      const { error } = await supabase
-        .from('rides')
-        .update({ 
-          verification_status: 'verified',
-          status: 'published'
-        })
-        .eq('id', ride.id);
-
-      if (error) throw error;
-
+      await callAdminApi('approve_ride', { id: ride.id });
       toast.success("Ride published successfully");
       fetchRides();
       setSelectedRide(null);
@@ -127,16 +92,10 @@ const AdminVerifyRidesPage = () => {
 
     setProcessing(true);
     try {
-      const { error } = await supabase
-        .from('rides')
-        .update({ 
-          verification_status: 'rejected',
-          rejection_reason: rejectReason,
-        })
-        .eq('id', selectedRide.id);
-
-      if (error) throw error;
-
+      await callAdminApi('reject_ride', { 
+        id: selectedRide.id,
+        reason: rejectReason 
+      });
       toast.success("Ride rejected");
       setRejectDialogOpen(false);
       setRejectReason("");

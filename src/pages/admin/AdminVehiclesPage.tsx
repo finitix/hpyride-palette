@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, Car, User, CheckCircle, XCircle, Clock, Check, X, Eye } from "lucide-react";
+import { Menu, Car, User, Check, X, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import { useAdminApi } from "@/hooks/useAdminApi";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import { toast } from "sonner";
 
@@ -38,6 +38,7 @@ interface Vehicle {
 const AdminVehiclesPage = () => {
   const navigate = useNavigate();
   const { admin } = useAdminAuth();
+  const { callAdminApi } = useAdminApi();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,45 +55,18 @@ const AdminVehiclesPage = () => {
       return;
     }
     fetchVehicles();
-
-    // Realtime subscription
-    const channel = supabase
-      .channel('vehicles-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, () => {
-        fetchVehicles();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [admin, navigate, activeTab]);
 
   const fetchVehicles = async () => {
     setLoading(true);
-    let query = supabase
-      .from('vehicles')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (activeTab === 'pending') {
-      query = query.eq('verification_status', 'pending');
-    }
-
-    const { data, error } = await query;
-
-    if (!error && data) {
-      const vehiclesWithProfiles = await Promise.all(
-        data.map(async (v) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name, email, phone')
-            .eq('user_id', v.user_id)
-            .maybeSingle();
-          return { ...v, profile };
-        })
-      );
-      setVehicles(vehiclesWithProfiles as Vehicle[]);
+    try {
+      const data = await callAdminApi('get_vehicles', { 
+        status: activeTab === 'pending' ? 'pending' : null 
+      });
+      setVehicles(data || []);
+    } catch (error: any) {
+      console.error('Error fetching vehicles:', error);
+      toast.error('Failed to fetch vehicles');
     }
     setLoading(false);
   };
@@ -100,16 +74,7 @@ const AdminVehiclesPage = () => {
   const handleApprove = async (vehicle: Vehicle) => {
     setProcessing(true);
     try {
-      const { error } = await supabase
-        .from('vehicles')
-        .update({ 
-          verification_status: 'verified',
-          is_verified: true
-        })
-        .eq('id', vehicle.id);
-
-      if (error) throw error;
-
+      await callAdminApi('approve_vehicle', { id: vehicle.id });
       toast.success("Vehicle verified successfully");
       fetchVehicles();
       setSelectedVehicle(null);
@@ -128,16 +93,7 @@ const AdminVehiclesPage = () => {
 
     setProcessing(true);
     try {
-      const { error } = await supabase
-        .from('vehicles')
-        .update({ 
-          verification_status: 'rejected',
-          is_verified: false
-        })
-        .eq('id', selectedVehicle.id);
-
-      if (error) throw error;
-
+      await callAdminApi('reject_vehicle', { id: selectedVehicle.id });
       toast.success("Vehicle rejected");
       setRejectDialogOpen(false);
       setRejectReason("");
