@@ -6,7 +6,7 @@ import { ArrowLeft, Search, Plus, Navigation } from "lucide-react";
 import BottomNavigation from "@/components/BottomNavigation";
 import { useGeolocation } from "@/hooks/useGeolocation";
 
-mapboxgl.accessToken = "pk.eyJ1IjoiZGFybHoiLCJhIjoiY21pbDVzN3VqMTVncjNlcjQ1MGxsYWhoZyJ9.GOk93pZDh2T7inUnOXYF9A";
+mapboxgl.accessToken = "pk.eyJ1IjoiZGFybHoiLCJhIjoiY21pbDVzN3VqMTVncjNlcjQ1MGxsYWhoZyJ9.GOk93pZDh2T5inUnOXYF9A";
 
 const RideSharingPage = () => {
   const navigate = useNavigate();

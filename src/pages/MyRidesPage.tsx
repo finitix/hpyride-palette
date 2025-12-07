@@ -52,8 +52,7 @@ const MyRidesPage = () => {
           *,
           rides (
             *,
-            vehicles (category, name, number),
-            profiles:user_id (full_name)
+            vehicles (category, name, number)
           )
         `)
         .eq('user_id', user.id)
@@ -238,7 +237,7 @@ const MyRidesPage = () => {
                         <Car className="w-5 h-5" />
                       </div>
                       <div>
-                        <p className="font-semibold text-foreground">{booking.rides?.profiles?.full_name}</p>
+                        <p className="font-semibold text-foreground">Driver</p>
                         <p className="text-sm text-muted-foreground">{booking.rides?.vehicles?.name}</p>
                       </div>
                     </div>

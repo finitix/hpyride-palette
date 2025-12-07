@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { ArrowLeft, Check, Upload, Car, Bike, ChevronRight } from "lucide-react";
+import { ArrowLeft, Check, Car, Bike, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,10 +11,19 @@ import { toast } from "sonner";
 import LocationInput from "@/components/LocationInput";
 import { useGeolocation } from "@/hooks/useGeolocation";
 
-mapboxgl.accessToken = "pk.eyJ1IjoiZGFybHoiLCJhIjoiY21pbDVzN3VqMTVncjNlcjQ1MGxsYWhoZyJ9.GOk93pZDh2T7inUnOXYF9A";
+mapboxgl.accessToken = "pk.eyJ1IjoiZGFybHoiLCJhIjoiY21pbDVzN3VqMTVncjNlcjQ1MGxsYWhoZyJ9.GOk93pZDh2T5inUnOXYF9A";
 
 type VehicleCategory = 'car' | 'bike' | 'auto' | 'taxi' | 'suv' | 'van' | 'mini_bus' | 'luxury' | 'ev' | 'other';
 type VehicleType = 'private' | 'commercial' | 'other';
+
+interface RouteOption {
+  id: string;
+  label: string;
+  color: string;
+  distance: number;
+  duration: number;
+  geometry: any;
+}
 
 const VEHICLE_CATEGORIES: { value: VehicleCategory; label: string; icon: any }[] = [
   { value: 'car', label: 'Car', icon: Car },
@@ -29,6 +38,8 @@ const VEHICLE_CATEGORIES: { value: VehicleCategory; label: string; icon: any }[]
   { value: 'other', label: 'Other', icon: Car },
 ];
 
+const ROUTE_COLORS = ['#000000', '#3B82F6', '#22C55E', '#F97316'];
+
 const PostRidePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -37,7 +48,6 @@ const PostRidePage = () => {
   const map = useRef<mapboxgl.Map | null>(null);
 
   const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -48,7 +58,8 @@ const PostRidePage = () => {
   const [dropCoords, setDropCoords] = useState<[number, number] | null>(null);
   const [rideDate, setRideDate] = useState("");
   const [rideTime, setRideTime] = useState("");
-  const [selectedRoute, setSelectedRoute] = useState("shortest");
+  const [routes, setRoutes] = useState<RouteOption[]>([]);
+  const [selectedRouteId, setSelectedRouteId] = useState<string>("");
   const [distance, setDistance] = useState(0);
   const [duration, setDuration] = useState(0);
   const [routePolyline, setRoutePolyline] = useState("");
@@ -63,6 +74,7 @@ const PostRidePage = () => {
 
   // Step 3: Pricing
   const [seatsAvailable, setSeatsAvailable] = useState(1);
+  const [manualSeats, setManualSeats] = useState(false);
   const [pricePerKm, setPricePerKm] = useState(3);
   const [hasAc, setHasAc] = useState(true);
   const [musicAllowed, setMusicAllowed] = useState(true);
@@ -87,6 +99,20 @@ const PostRidePage = () => {
       zoom: 12,
     });
 
+    map.current.on('load', () => {
+      // Add markers when map is loaded
+      if (pickupCoords) {
+        new mapboxgl.Marker({ color: '#22C55E' })
+          .setLngLat(pickupCoords)
+          .addTo(map.current!);
+      }
+      if (dropCoords) {
+        new mapboxgl.Marker({ color: '#F97316' })
+          .setLngLat(dropCoords)
+          .addTo(map.current!);
+      }
+    });
+
     return () => {
       map.current?.remove();
       map.current = null;
@@ -94,10 +120,10 @@ const PostRidePage = () => {
   }, [latitude, longitude]);
 
   useEffect(() => {
-    if (pickupCoords && dropCoords && map.current) {
-      fetchRoute();
+    if (pickupCoords && dropCoords) {
+      fetchMultipleRoutes();
     }
-  }, [pickupCoords, dropCoords, selectedRoute]);
+  }, [pickupCoords, dropCoords]);
 
   const fetchExistingVehicles = async () => {
     if (!user) return;
@@ -109,49 +135,99 @@ const PostRidePage = () => {
     setExistingVehicles(data || []);
   };
 
-  const fetchRoute = async () => {
-    if (!pickupCoords || !dropCoords) return;
-    
-    const profile = selectedRoute === 'shortest' ? 'driving' : 'driving-traffic';
-    
+  const fetchMultipleRoutes = async () => {
+    if (!pickupCoords || !dropCoords || !map.current) return;
+
+    // Clear existing route layers
+    routes.forEach((_, index) => {
+      if (map.current?.getLayer(`route-${index}`)) {
+        map.current.removeLayer(`route-${index}`);
+      }
+      if (map.current?.getSource(`route-${index}`)) {
+        map.current.removeSource(`route-${index}`);
+      }
+    });
+
     try {
       const response = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/${profile}/${pickupCoords[0]},${pickupCoords[1]};${dropCoords[0]},${dropCoords[1]}?geometries=geojson&access_token=${mapboxgl.accessToken}`
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${pickupCoords[0]},${pickupCoords[1]};${dropCoords[0]},${dropCoords[1]}?geometries=geojson&alternatives=true&access_token=${mapboxgl.accessToken}`
       );
       const data = await response.json();
-      
-      if (data.routes?.[0]) {
-        const route = data.routes[0];
-        setDistance(route.distance / 1000);
-        setDuration(Math.round(route.duration / 60));
-        setRoutePolyline(JSON.stringify(route.geometry));
 
-        if (map.current) {
-          if (map.current.getSource('route')) {
-            (map.current.getSource('route') as mapboxgl.GeoJSONSource).setData(route.geometry);
-          } else {
-            map.current.addSource('route', {
+      if (data.routes && data.routes.length > 0) {
+        const routeLabels = ['Fastest', 'Alternative 1', 'Alternative 2', 'Alternative 3'];
+        const newRoutes: RouteOption[] = data.routes.map((route: any, index: number) => ({
+          id: `route-${index}`,
+          label: routeLabels[index] || `Route ${index + 1}`,
+          color: ROUTE_COLORS[index] || '#888888',
+          distance: route.distance / 1000,
+          duration: Math.round(route.duration / 60),
+          geometry: route.geometry,
+        }));
+
+        setRoutes(newRoutes);
+        
+        // Select first route by default
+        if (newRoutes.length > 0) {
+          setSelectedRouteId(newRoutes[0].id);
+          setDistance(newRoutes[0].distance);
+          setDuration(newRoutes[0].duration);
+          setRoutePolyline(JSON.stringify(newRoutes[0].geometry));
+        }
+
+        // Draw all routes on map
+        newRoutes.forEach((route, index) => {
+          if (map.current) {
+            map.current.addSource(route.id, {
               type: 'geojson',
               data: route.geometry
             });
             map.current.addLayer({
-              id: 'route',
+              id: route.id,
               type: 'line',
-              source: 'route',
+              source: route.id,
               layout: { 'line-join': 'round', 'line-cap': 'round' },
-              paint: { 'line-color': '#000', 'line-width': 4 }
+              paint: { 
+                'line-color': route.color, 
+                'line-width': selectedRouteId === route.id ? 6 : 3,
+                'line-opacity': selectedRouteId === route.id ? 1 : 0.5
+              }
             });
           }
+        });
 
-          const bounds = new mapboxgl.LngLatBounds();
-          bounds.extend(pickupCoords);
-          bounds.extend(dropCoords);
-          map.current.fitBounds(bounds, { padding: 50 });
-        }
+        // Add markers
+        new mapboxgl.Marker({ color: '#22C55E' })
+          .setLngLat(pickupCoords)
+          .addTo(map.current);
+        new mapboxgl.Marker({ color: '#F97316' })
+          .setLngLat(dropCoords)
+          .addTo(map.current);
+
+        // Fit bounds
+        const bounds = new mapboxgl.LngLatBounds();
+        bounds.extend(pickupCoords);
+        bounds.extend(dropCoords);
+        map.current.fitBounds(bounds, { padding: 50 });
       }
     } catch (error) {
-      console.error('Error fetching route:', error);
+      console.error('Error fetching routes:', error);
     }
+  };
+
+  const selectRoute = (route: RouteOption) => {
+    setSelectedRouteId(route.id);
+    setDistance(route.distance);
+    setDuration(route.duration);
+    setRoutePolyline(JSON.stringify(route.geometry));
+
+    // Update line widths on map
+    routes.forEach((r) => {
+      if (map.current?.getLayer(r.id)) {
+        map.current.setPaintProperty(r.id, 'line-width', r.id === route.id ? 6 : 3);
+        map.current.setPaintProperty(r.id, 'line-opacity', r.id === route.id ? 1 : 0.5);
+      }
+    });
   };
 
   const handleSubmit = async () => {
@@ -197,7 +273,7 @@ const PostRidePage = () => {
           drop_lng: dropCoords![0],
           ride_date: rideDate,
           ride_time: rideTime,
-          route_type: selectedRoute,
+          route_type: selectedRouteId,
           route_polyline: routePolyline,
           distance_km: distance,
           duration_minutes: duration,
@@ -303,39 +379,43 @@ const PostRidePage = () => {
                 </div>
               </div>
 
-              {distance > 0 && (
-                <div className="bg-muted rounded-lg p-3">
-                  <p className="text-sm text-foreground">
-                    <span className="font-semibold">{distance.toFixed(1)} km</span> • {duration} mins
-                  </p>
+              {routes.length > 0 && (
+                <div>
+                  <label className="text-sm text-muted-foreground mb-2 block">Select Route</label>
+                  <div className="space-y-2">
+                    {routes.map((route) => (
+                      <button
+                        key={route.id}
+                        onClick={() => selectRoute(route)}
+                        className={`w-full p-3 rounded-lg border flex items-center justify-between ${
+                          selectedRouteId === route.id
+                            ? 'border-foreground bg-muted'
+                            : 'border-border'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div 
+                            className="w-4 h-4 rounded-full" 
+                            style={{ backgroundColor: route.color }}
+                          />
+                          <span className="font-medium text-foreground">{route.label}</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-foreground">{route.distance.toFixed(1)} km</p>
+                          <p className="text-xs text-muted-foreground">{route.duration} mins</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
-
-              <div>
-                <label className="text-sm text-muted-foreground mb-2 block">Select Route</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {['shortest', 'fastest', 'highway', 'no_toll'].map((route) => (
-                    <button
-                      key={route}
-                      onClick={() => setSelectedRoute(route)}
-                      className={`px-3 py-2 text-sm rounded-lg border ${
-                        selectedRoute === route
-                          ? 'border-foreground bg-foreground text-background'
-                          : 'border-border bg-card text-foreground'
-                      }`}
-                    >
-                      {route.replace('_', ' ').charAt(0).toUpperCase() + route.slice(1).replace('_', ' ')}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
 
             <Button
               variant="hero"
               className="w-full"
               onClick={() => setStep(2)}
-              disabled={!pickupLocation || !dropLocation || !rideDate || !rideTime}
+              disabled={!pickupLocation || !dropLocation || !rideDate || !rideTime || !selectedRouteId}
             >
               Continue
               <ChevronRight className="w-4 h-4 ml-2" />
@@ -457,21 +537,46 @@ const PostRidePage = () => {
             <div className="bg-card border border-border rounded-xl p-4 space-y-4">
               <div>
                 <label className="text-sm text-muted-foreground mb-2 block">Seats Available</label>
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={() => setSeatsAvailable(Math.max(1, seatsAvailable - 1))}
-                    className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-lg"
-                  >
-                    -
-                  </button>
-                  <span className="text-2xl font-bold text-foreground w-8 text-center">{seatsAvailable}</span>
-                  <button
-                    onClick={() => setSeatsAvailable(Math.min(6, seatsAvailable + 1))}
-                    className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-lg"
-                  >
-                    +
-                  </button>
-                </div>
+                {!manualSeats ? (
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => setSeatsAvailable(Math.max(1, seatsAvailable - 1))}
+                      className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-lg"
+                    >
+                      -
+                    </button>
+                    <span className="text-2xl font-bold text-foreground w-8 text-center">{seatsAvailable}</span>
+                    <button
+                      onClick={() => setSeatsAvailable(Math.min(20, seatsAvailable + 1))}
+                      className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-lg"
+                    >
+                      +
+                    </button>
+                    <button
+                      onClick={() => setManualSeats(true)}
+                      className="text-sm text-muted-foreground underline ml-4"
+                    >
+                      Enter manually
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={seatsAvailable}
+                      onChange={(e) => setSeatsAvailable(Number(e.target.value))}
+                      className="w-24"
+                    />
+                    <button
+                      onClick={() => setManualSeats(false)}
+                      className="text-sm text-muted-foreground underline"
+                    >
+                      Use buttons
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div>
