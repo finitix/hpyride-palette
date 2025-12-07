@@ -17,10 +17,20 @@ import MyRidesPage from "@/pages/MyRidesPage";
 import ChatPage from "@/pages/ChatPage";
 import NavigationPage from "@/pages/NavigationPage";
 import CarRentalsPage from "@/pages/CarRentalsPage";
-import PreOwnedPage from "@/pages/PreOwnedPage";
 import DriverPoolPage from "@/pages/DriverPoolPage";
 import ProfilePage from "@/pages/ProfilePage";
 import NotFound from "@/pages/NotFound";
+// Pre-owned car pages
+import PreOwnedHomePage from "@/pages/preowned/PreOwnedHomePage";
+import ListCarPage from "@/pages/preowned/ListCarPage";
+import ListingSuccessPage from "@/pages/preowned/ListingSuccessPage";
+import CarDetailsPage from "@/pages/preowned/CarDetailsPage";
+import ShowInterestPage from "@/pages/preowned/ShowInterestPage";
+import MyListingsPage from "@/pages/preowned/MyListingsPage";
+import MyInterestsPage from "@/pages/preowned/MyInterestsPage";
+import CarChatPage from "@/pages/preowned/CarChatPage";
+import FiltersPage from "@/pages/preowned/FiltersPage";
+import ReportListingPage from "@/pages/preowned/ReportListingPage";
 
 const queryClient = new QueryClient();
 
@@ -45,9 +55,19 @@ const App = () => (
             <Route path="/chat/:bookingId" element={<ChatPage />} />
             <Route path="/navigation/:bookingId" element={<NavigationPage />} />
             <Route path="/car-rentals" element={<CarRentalsPage />} />
-            <Route path="/pre-owned" element={<PreOwnedPage />} />
             <Route path="/driver-pool" element={<DriverPoolPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            {/* Pre-owned car routes */}
+            <Route path="/pre-owned" element={<PreOwnedHomePage />} />
+            <Route path="/pre-owned/list" element={<ListCarPage />} />
+            <Route path="/pre-owned/success" element={<ListingSuccessPage />} />
+            <Route path="/pre-owned/car/:carId" element={<CarDetailsPage />} />
+            <Route path="/pre-owned/interest/:carId" element={<ShowInterestPage />} />
+            <Route path="/pre-owned/my-listings" element={<MyListingsPage />} />
+            <Route path="/pre-owned/my-interests" element={<MyInterestsPage />} />
+            <Route path="/pre-owned/chat/:carId" element={<CarChatPage />} />
+            <Route path="/pre-owned/filters" element={<FiltersPage />} />
+            <Route path="/pre-owned/report/:carId" element={<ReportListingPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

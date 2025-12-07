@@ -39,17 +39,19 @@ const RideSharingPage = () => {
   }, []);
 
   const fetchPublishedRides = async () => {
+    const today = new Date().toISOString().split('T')[0];
     const { data, error } = await supabase
       .from('rides')
       .select('*, vehicles(category, name, number)')
       .eq('status', 'published')
-      .gte('ride_date', new Date().toISOString().split('T')[0]);
+      .neq('status', 'completed')
+      .neq('status', 'cancelled')
+      .gte('ride_date', today);
     
     if (error) {
       console.error('Error fetching rides:', error);
     }
     setRides((data || []) as PublishedRide[]);
-
     // Set up realtime subscription
     const channel = supabase
       .channel('rides-realtime')
