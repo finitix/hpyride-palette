@@ -1,26 +1,48 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Car, Calendar, Clock, MapPin, Users, Check, X, MessageCircle } from "lucide-react";
+import { ArrowLeft, Car, Calendar, Clock, MapPin, Users, Check, X, MessageCircle, Play, CheckCircle, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import BottomNavigation from "@/components/BottomNavigation";
+import ReviewModal from "@/components/ReviewModal";
 
 type TabType = 'offered' | 'booked';
 
 const MyRidesPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>('offered');
   const [offeredRides, setOfferedRides] = useState<any[]>([]);
   const [bookedRides, setBookedRides] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
       fetchRides();
+      setupRealtimeSubscription();
     }
   }, [user]);
+
+  const setupRealtimeSubscription = () => {
+    const channel = supabase
+      .channel('my-rides-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rides' }, () => {
+        fetchRides();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+        fetchRides();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
 
   const fetchRides = async () => {
     if (!user) return;
@@ -77,9 +99,47 @@ const MyRidesPage = () => {
         .update(updateData)
         .eq('id', bookingId);
 
+      toast({
+        title: action === 'confirmed' ? 'Booking confirmed!' : 'Booking rejected',
+      });
+
       fetchRides();
     } catch (error) {
       console.error('Error updating booking:', error);
+    }
+  };
+
+  const handleStartRide = (rideId: string, bookingId: string) => {
+    navigate(`/navigation/${bookingId}`);
+  };
+
+  const handleCompleteRide = async (booking: any) => {
+    try {
+      // Update booking status
+      await supabase
+        .from('bookings')
+        .update({ status: 'completed' })
+        .eq('id', booking.id);
+
+      // Update ride status if all bookings complete
+      await supabase
+        .from('rides')
+        .update({ status: 'completed' })
+        .eq('id', booking.ride_id);
+
+      toast({
+        title: 'Ride completed!',
+      });
+
+      // Show review modal for passengers
+      if (booking.user_id === user?.id) {
+        setSelectedBooking(booking);
+        setShowReviewModal(true);
+      }
+
+      fetchRides();
+    } catch (error) {
+      console.error('Error completing ride:', error);
     }
   };
 
@@ -91,6 +151,7 @@ const MyRidesPage = () => {
       case 'confirmed': return 'bg-green-500/20 text-green-600';
       case 'rejected':
       case 'cancelled': return 'bg-red-500/20 text-red-600';
+      case 'completed': return 'bg-blue-500/20 text-blue-600';
       default: return 'bg-muted text-muted-foreground';
     }
   };
@@ -169,40 +230,65 @@ const MyRidesPage = () => {
                       <div className="border-t border-border pt-3">
                         <h4 className="text-sm font-semibold text-foreground mb-2">Booking Requests</h4>
                         {ride.bookings.map((booking: any) => (
-                          <div key={booking.id} className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
-                            <div>
-                              <p className="text-sm font-medium text-foreground">{booking.passenger_name}</p>
-                              <p className="text-xs text-muted-foreground">{booking.seats_booked} seat(s)</p>
-                            </div>
-                            {booking.status === 'pending' ? (
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => handleBookingAction(booking.id, 'confirmed')}
-                                  className="p-2 bg-green-500/20 text-green-600 rounded-full"
-                                >
-                                  <Check className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleBookingAction(booking.id, 'rejected')}
-                                  className="p-2 bg-red-500/20 text-red-600 rounded-full"
-                                >
-                                  <X className="w-4 h-4" />
-                                </button>
+                          <div key={booking.id} className="py-3 border-b border-border last:border-b-0">
+                            <div className="flex items-center justify-between mb-2">
+                              <div>
+                                <p className="text-sm font-medium text-foreground">{booking.passenger_name}</p>
+                                <p className="text-xs text-muted-foreground">{booking.seats_booked} seat(s)</p>
                               </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
+                              {booking.status === 'pending' ? (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleBookingAction(booking.id, 'confirmed')}
+                                    className="p-2 bg-green-500/20 text-green-600 rounded-full"
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleBookingAction(booking.id, 'rejected')}
+                                    className="p-2 bg-red-500/20 text-red-600 rounded-full"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ) : (
                                 <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(booking.status)}`}>
                                   {booking.status}
                                 </span>
-                                {booking.status === 'confirmed' && (
-                                  <button
-                                    onClick={() => navigate(`/chat/${booking.id}`)}
-                                    className="p-2 bg-muted rounded-full"
-                                  >
-                                    <MessageCircle className="w-4 h-4" />
-                                  </button>
-                                )}
+                              )}
+                            </div>
+
+                            {booking.status === 'confirmed' && ride.status === 'published' && (
+                              <div className="flex gap-2 mt-2">
+                                <Button
+                                  variant="hero"
+                                  size="sm"
+                                  className="flex-1 gap-1"
+                                  onClick={() => handleStartRide(ride.id, booking.id)}
+                                >
+                                  <Play className="w-4 h-4" />
+                                  Start Ride
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => navigate(`/chat/${booking.id}`)}
+                                >
+                                  <MessageCircle className="w-4 h-4" />
+                                </Button>
                               </div>
+                            )}
+
+                            {booking.status === 'confirmed' && ride.status === 'published' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full mt-2 gap-1"
+                                onClick={() => handleCompleteRide(booking)}
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                                Complete Ride
+                              </Button>
                             )}
                           </div>
                         ))}
@@ -266,13 +352,26 @@ const MyRidesPage = () => {
                             Chat
                           </Button>
                           <Button
-                            variant="outline"
+                            variant="hero"
                             size="sm"
                             onClick={() => navigate(`/navigation/${booking.id}`)}
                           >
                             Navigate
                           </Button>
                         </div>
+                      )}
+                      {booking.status === 'completed' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedBooking(booking);
+                            setShowReviewModal(true);
+                          }}
+                        >
+                          <Star className="w-4 h-4 mr-1" />
+                          Rate
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -284,6 +383,20 @@ const MyRidesPage = () => {
       </div>
 
       <BottomNavigation />
+
+      {showReviewModal && selectedBooking && user && (
+        <ReviewModal
+          isOpen={showReviewModal}
+          onClose={() => {
+            setShowReviewModal(false);
+            setSelectedBooking(null);
+          }}
+          bookingId={selectedBooking.id}
+          rideId={selectedBooking.ride_id}
+          driverId={selectedBooking.driver_id}
+          userId={user.id}
+        />
+      )}
     </div>
   );
 };

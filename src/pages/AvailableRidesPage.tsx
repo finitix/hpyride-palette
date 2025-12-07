@@ -9,6 +9,10 @@ interface Ride {
   id: string;
   pickup_location: string;
   drop_location: string;
+  pickup_lat: number;
+  pickup_lng: number;
+  drop_lat: number;
+  drop_lng: number;
   ride_date: string;
   ride_time: string;
   seats_available: number;
@@ -16,6 +20,7 @@ interface Ride {
   total_price: number;
   distance_km: number;
   has_ac: boolean;
+  route_polyline?: string;
   vehicles: {
     category: string;
     name: string;
@@ -29,9 +34,10 @@ interface Ride {
 const AvailableRidesPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const searchParams = location.state as { pickup?: any; drop?: any } | null;
+  const searchParams = location.state as { pickup?: { location: string; coords: [number, number] }; drop?: { location: string; coords: [number, number] } } | null;
   
   const [rides, setRides] = useState<Ride[]>([]);
+  const [filteredRides, setFilteredRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState("");
 
@@ -48,12 +54,16 @@ const AvailableRidesPage = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [dateFilter]);
+  }, []);
+
+  useEffect(() => {
+    filterRides();
+  }, [rides, searchParams, dateFilter]);
 
   const fetchRides = async () => {
     setLoading(true);
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('rides')
         .select(`
           *,
@@ -64,22 +74,69 @@ const AvailableRidesPage = () => {
         .gte('ride_date', new Date().toISOString().split('T')[0])
         .order('ride_date', { ascending: true });
 
-      if (dateFilter) {
-        query = query.eq('ride_date', dateFilter);
-      }
-
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error('Query error:', error);
-        throw error;
-      }
+      if (error) throw error;
       setRides((data || []) as any);
     } catch (error) {
       console.error('Error fetching rides:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const isPointOnRoute = (pickupCoords: [number, number], dropCoords: [number, number], ride: Ride): boolean => {
+    const [pickupLng, pickupLat] = pickupCoords;
+    const [dropLng, dropLat] = dropCoords;
+    
+    // Check if user's pickup is within 10km of ride's route (between pickup and drop)
+    const distToRidePickup = calculateDistance(pickupLat, pickupLng, ride.pickup_lat, ride.pickup_lng);
+    const distToRideDrop = calculateDistance(dropLat, dropLng, ride.drop_lat, ride.drop_lng);
+    
+    // Check if pickup is near ride's route (within 10km of pickup or anywhere along route)
+    const pickupNearRoute = distToRidePickup <= 10 || isNearRoute(pickupLat, pickupLng, ride);
+    
+    // Check if drop is near ride's destination (within 10km)
+    const dropNearDest = distToRideDrop <= 10 || isNearRoute(dropLat, dropLng, ride);
+    
+    return pickupNearRoute && dropNearDest;
+  };
+
+  const isNearRoute = (lat: number, lng: number, ride: Ride): boolean => {
+    // Simple check: is the point roughly between pickup and drop?
+    const minLat = Math.min(ride.pickup_lat, ride.drop_lat) - 0.1; // ~10km buffer
+    const maxLat = Math.max(ride.pickup_lat, ride.drop_lat) + 0.1;
+    const minLng = Math.min(ride.pickup_lng, ride.drop_lng) - 0.1;
+    const maxLng = Math.max(ride.pickup_lng, ride.drop_lng) + 0.1;
+    
+    return lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng;
+  };
+
+  const filterRides = () => {
+    let filtered = [...rides];
+
+    // Filter by date if set
+    if (dateFilter) {
+      filtered = filtered.filter(ride => ride.ride_date === dateFilter);
+    }
+
+    // Filter by location if search params are provided
+    if (searchParams?.pickup?.coords && searchParams?.drop?.coords) {
+      filtered = filtered.filter(ride => 
+        isPointOnRoute(searchParams.pickup!.coords, searchParams.drop!.coords, ride)
+      );
+    }
+
+    setFilteredRides(filtered);
   };
 
   const getVehicleIcon = (category: string) => {
@@ -107,6 +164,19 @@ const AvailableRidesPage = () => {
             Filter
           </Button>
         </div>
+
+        {searchParams && (
+          <div className="mt-3 p-3 bg-muted rounded-lg">
+            <div className="flex items-center gap-2 text-sm">
+              <div className="w-2 h-2 rounded-full bg-green-500" />
+              <span className="text-foreground line-clamp-1">{searchParams.pickup?.location}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm mt-1">
+              <div className="w-2 h-2 rounded-full bg-orange-500" />
+              <span className="text-foreground line-clamp-1">{searchParams.drop?.location}</span>
+            </div>
+          </div>
+        )}
         
         <div className="mt-3 flex gap-2 overflow-x-auto">
           <input
@@ -128,15 +198,19 @@ const AvailableRidesPage = () => {
           <div className="flex items-center justify-center h-40">
             <div className="animate-spin w-8 h-8 border-2 border-foreground border-t-transparent rounded-full" />
           </div>
-        ) : rides.length === 0 ? (
+        ) : filteredRides.length === 0 ? (
           <div className="text-center py-12">
             <Car className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-2">No rides available</h3>
-            <p className="text-muted-foreground text-sm">Try adjusting your filters or check back later</p>
+            <p className="text-muted-foreground text-sm mb-4">Try adjusting your search or check back later</p>
+            <Button variant="outline" onClick={() => navigate('/book-ride')}>
+              Search Again
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">
-            {rides.map((ride) => (
+            <p className="text-sm text-muted-foreground">{filteredRides.length} rides found</p>
+            {filteredRides.map((ride) => (
               <div
                 key={ride.id}
                 onClick={() => navigate(`/booking/${ride.id}`)}

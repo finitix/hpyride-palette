@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Search, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LocationInput from "@/components/LocationInput";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -11,7 +11,6 @@ mapboxgl.accessToken = "pk.eyJ1IjoiZGFybHoiLCJhIjoiY21pbDVzN3VqMTVncjNlcjQ1MGxsY
 
 const BookRidePage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const { latitude, longitude, requestLocation } = useGeolocation();
@@ -84,6 +83,10 @@ const BookRidePage = () => {
     }
   };
 
+  const handleShowAllRides = () => {
+    navigate('/available-rides');
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="sticky top-0 z-40 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
@@ -126,12 +129,21 @@ const BookRidePage = () => {
 
             <Button 
               variant="hero" 
-              className="w-full"
+              className="w-full mb-3"
               onClick={handleSearchRides}
               disabled={!pickupLocation || !dropLocation}
             >
               <Search className="w-4 h-4 mr-2" />
               Search Rides
+            </Button>
+
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={handleShowAllRides}
+            >
+              <List className="w-4 h-4 mr-2" />
+              Show All Available Rides
             </Button>
           </div>
         </div>
