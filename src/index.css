@@ -113,6 +113,15 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Hide Mapbox watermark/attribution */
+  .mapboxgl-ctrl-attrib {
+    display: none !important;
+  }
+  
+  .mapboxgl-ctrl-logo {
+    display: none !important;
+  }
 }
 
 @layer components {
