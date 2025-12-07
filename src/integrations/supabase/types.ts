@@ -14,6 +14,187 @@ export type Database = {
   }
   public: {
     Tables: {
+      bookings: {
+        Row: {
+          alternate_phone: string | null
+          created_at: string
+          driver_id: string
+          drop_lat: number | null
+          drop_lng: number | null
+          drop_location: string | null
+          id: string
+          notes: string | null
+          passenger_name: string
+          passenger_phone: string
+          payment_method: string | null
+          pickup_lat: number | null
+          pickup_lng: number | null
+          pickup_location: string | null
+          rejection_reason: string | null
+          ride_id: string
+          seats_booked: number
+          status: Database["public"]["Enums"]["booking_status"] | null
+          total_fare: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alternate_phone?: string | null
+          created_at?: string
+          driver_id: string
+          drop_lat?: number | null
+          drop_lng?: number | null
+          drop_location?: string | null
+          id?: string
+          notes?: string | null
+          passenger_name: string
+          passenger_phone: string
+          payment_method?: string | null
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          pickup_location?: string | null
+          rejection_reason?: string | null
+          ride_id: string
+          seats_booked?: number
+          status?: Database["public"]["Enums"]["booking_status"] | null
+          total_fare: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alternate_phone?: string | null
+          created_at?: string
+          driver_id?: string
+          drop_lat?: number | null
+          drop_lng?: number | null
+          drop_location?: string | null
+          id?: string
+          notes?: string | null
+          passenger_name?: string
+          passenger_phone?: string
+          payment_method?: string | null
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          pickup_location?: string | null
+          rejection_reason?: string | null
+          ride_id?: string
+          seats_booked?: number
+          status?: Database["public"]["Enums"]["booking_status"] | null
+          total_fare?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          booking_id: string
+          created_at: string
+          id: string
+          message: string
+          sender_id: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          id?: string
+          message: string
+          sender_id: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_verifications: {
+        Row: {
+          created_at: string
+          dl_back_url: string | null
+          dl_front_url: string | null
+          dl_number: string | null
+          id: string
+          rejection_reason: string | null
+          status: Database["public"]["Enums"]["verification_status"] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dl_back_url?: string | null
+          dl_front_url?: string | null
+          dl_number?: string | null
+          id?: string
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["verification_status"] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dl_back_url?: string | null
+          dl_front_url?: string | null
+          dl_number?: string | null
+          id?: string
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["verification_status"] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          data: Json | null
+          id: string
+          is_read: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -50,6 +231,173 @@ export type Database = {
         }
         Relationships: []
       }
+      rides: {
+        Row: {
+          created_at: string
+          distance_km: number | null
+          drop_lat: number
+          drop_lng: number
+          drop_location: string
+          duration_minutes: number | null
+          female_only: boolean | null
+          has_ac: boolean | null
+          id: string
+          luggage_allowed: boolean | null
+          music_allowed: boolean | null
+          pickup_flexibility: string | null
+          pickup_lat: number
+          pickup_lng: number
+          pickup_location: string
+          price_per_km: number
+          ride_date: string
+          ride_time: string
+          route_polyline: string | null
+          route_type: string | null
+          seats_available: number
+          status: Database["public"]["Enums"]["ride_status"] | null
+          total_price: number | null
+          updated_at: string
+          user_id: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          distance_km?: number | null
+          drop_lat: number
+          drop_lng: number
+          drop_location: string
+          duration_minutes?: number | null
+          female_only?: boolean | null
+          has_ac?: boolean | null
+          id?: string
+          luggage_allowed?: boolean | null
+          music_allowed?: boolean | null
+          pickup_flexibility?: string | null
+          pickup_lat: number
+          pickup_lng: number
+          pickup_location: string
+          price_per_km: number
+          ride_date: string
+          ride_time: string
+          route_polyline?: string | null
+          route_type?: string | null
+          seats_available?: number
+          status?: Database["public"]["Enums"]["ride_status"] | null
+          total_price?: number | null
+          updated_at?: string
+          user_id: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          distance_km?: number | null
+          drop_lat?: number
+          drop_lng?: number
+          drop_location?: string
+          duration_minutes?: number | null
+          female_only?: boolean | null
+          has_ac?: boolean | null
+          id?: string
+          luggage_allowed?: boolean | null
+          music_allowed?: boolean | null
+          pickup_flexibility?: string | null
+          pickup_lat?: number
+          pickup_lng?: number
+          pickup_location?: string
+          price_per_km?: number
+          ride_date?: string
+          ride_time?: string
+          route_polyline?: string | null
+          route_type?: string | null
+          seats_available?: number
+          status?: Database["public"]["Enums"]["ride_status"] | null
+          total_price?: number | null
+          updated_at?: string
+          user_id?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rides_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicles: {
+        Row: {
+          category: Database["public"]["Enums"]["vehicle_category"]
+          created_at: string
+          front_image_url: string | null
+          has_ac: boolean | null
+          id: string
+          insurance_url: string | null
+          is_verified: boolean | null
+          model: string | null
+          name: string
+          number: string
+          pollution_url: string | null
+          rc_book_url: string | null
+          rear_image_url: string | null
+          seats: number | null
+          side_image_url: string | null
+          updated_at: string
+          user_id: string
+          vehicle_type: Database["public"]["Enums"]["vehicle_type"]
+          verification_status:
+            | Database["public"]["Enums"]["verification_status"]
+            | null
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["vehicle_category"]
+          created_at?: string
+          front_image_url?: string | null
+          has_ac?: boolean | null
+          id?: string
+          insurance_url?: string | null
+          is_verified?: boolean | null
+          model?: string | null
+          name: string
+          number: string
+          pollution_url?: string | null
+          rc_book_url?: string | null
+          rear_image_url?: string | null
+          seats?: number | null
+          side_image_url?: string | null
+          updated_at?: string
+          user_id: string
+          vehicle_type: Database["public"]["Enums"]["vehicle_type"]
+          verification_status?:
+            | Database["public"]["Enums"]["verification_status"]
+            | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["vehicle_category"]
+          created_at?: string
+          front_image_url?: string | null
+          has_ac?: boolean | null
+          id?: string
+          insurance_url?: string | null
+          is_verified?: boolean | null
+          model?: string | null
+          name?: string
+          number?: string
+          pollution_url?: string | null
+          rc_book_url?: string | null
+          rear_image_url?: string | null
+          seats?: number | null
+          side_image_url?: string | null
+          updated_at?: string
+          user_id?: string
+          vehicle_type?: Database["public"]["Enums"]["vehicle_type"]
+          verification_status?:
+            | Database["public"]["Enums"]["verification_status"]
+            | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -58,7 +406,31 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      booking_status:
+        | "pending"
+        | "confirmed"
+        | "rejected"
+        | "completed"
+        | "cancelled"
+      ride_status:
+        | "pending"
+        | "verified"
+        | "published"
+        | "completed"
+        | "cancelled"
+      vehicle_category:
+        | "car"
+        | "bike"
+        | "auto"
+        | "taxi"
+        | "suv"
+        | "van"
+        | "mini_bus"
+        | "luxury"
+        | "ev"
+        | "other"
+      vehicle_type: "private" | "commercial" | "other"
+      verification_status: "pending" | "verified" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -185,6 +557,35 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      booking_status: [
+        "pending",
+        "confirmed",
+        "rejected",
+        "completed",
+        "cancelled",
+      ],
+      ride_status: [
+        "pending",
+        "verified",
+        "published",
+        "completed",
+        "cancelled",
+      ],
+      vehicle_category: [
+        "car",
+        "bike",
+        "auto",
+        "taxi",
+        "suv",
+        "van",
+        "mini_bus",
+        "luxury",
+        "ev",
+        "other",
+      ],
+      vehicle_type: ["private", "commercial", "other"],
+      verification_status: ["pending", "verified", "rejected"],
+    },
   },
 } as const
