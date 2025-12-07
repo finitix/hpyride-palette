@@ -39,12 +39,28 @@ const RideSharingPage = () => {
   }, []);
 
   const fetchPublishedRides = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('rides')
       .select('*, vehicles(category, name, number)')
       .eq('status', 'published')
       .gte('ride_date', new Date().toISOString().split('T')[0]);
+    
+    if (error) {
+      console.error('Error fetching rides:', error);
+    }
     setRides((data || []) as PublishedRide[]);
+
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('rides-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rides' }, () => {
+        fetchPublishedRides();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   };
 
   useEffect(() => {
@@ -99,11 +115,29 @@ const RideSharingPage = () => {
   }, [rides, map.current]);
 
   const getVehicleMarkerSVG = (category: string): string => {
-    const bgColor = category === 'bike' ? '#3B82F6' : category === 'auto' ? '#22C55E' : '#000000';
-    return `<div style="background: ${bgColor}; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
-      <svg width="20" height="20" fill="white" viewBox="0 0 24 24">
-        ${category === 'bike' 
+    const colorMap: Record<string, string> = {
+      'bike': '#3B82F6',      // Blue
+      'auto': '#22C55E',      // Green
+      'taxi': '#EAB308',      // Yellow
+      'suv': '#8B5CF6',       // Purple
+      'van': '#F97316',       // Orange
+      'mini_bus': '#06B6D4',  // Cyan
+      'luxury': '#EC4899',    // Pink
+      'ev': '#10B981',        // Emerald
+      'car': '#000000',       // Black
+      'other': '#6B7280',     // Gray
+    };
+    const bgColor = colorMap[category] || '#000000';
+    
+    const isBike = category === 'bike';
+    const isAuto = category === 'auto';
+    
+    return `<div style="background: ${bgColor}; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.4); border: 2px solid white;">
+      <svg width="22" height="22" fill="white" viewBox="0 0 24 24">
+        ${isBike 
           ? '<path d="M5 20.5A3.5 3.5 0 0 1 1.5 17A3.5 3.5 0 0 1 5 13.5A3.5 3.5 0 0 1 8.5 17A3.5 3.5 0 0 1 5 20.5M5 12A5 5 0 0 0 0 17A5 5 0 0 0 5 22A5 5 0 0 0 10 17A5 5 0 0 0 5 12M14.8 10H19V8.2H15.8L13.9 4.1C13.6 3.4 13 3 12.2 3C11.6 3 11 3.4 10.6 3.9L7.2 8.3C6.8 8.8 6.8 9.5 7.1 10C7.5 10.5 8.1 10.7 8.6 10.7H11V16.5H13V8.3L14.8 10M19 20.5A3.5 3.5 0 0 1 15.5 17A3.5 3.5 0 0 1 19 13.5A3.5 3.5 0 0 1 22.5 17A3.5 3.5 0 0 1 19 20.5M19 12A5 5 0 0 0 14 17A5 5 0 0 0 19 22A5 5 0 0 0 24 17A5 5 0 0 0 19 12M16 4.8C17 4.8 17.8 4 17.8 3C17.8 2 17 1.2 16 1.2C15 1.2 14.2 2 14.2 3C14.2 4 15 4.8 16 4.8Z"/>'
+          : isAuto
+          ? '<path d="M3,4H7V8H3V4M9,5V7H21V5H9M3,10H7V14H3V10M9,11V13H21V11H9M3,16H7V20H3V16M9,17V19H21V17H9"/>'
           : '<path d="M5,11L6.5,6.5H17.5L19,11M17.5,16A1.5,1.5 0 0,1 16,14.5A1.5,1.5 0 0,1 17.5,13A1.5,1.5 0 0,1 19,14.5A1.5,1.5 0 0,1 17.5,16M6.5,16A1.5,1.5 0 0,1 5,14.5A1.5,1.5 0 0,1 6.5,13A1.5,1.5 0 0,1 8,14.5A1.5,1.5 0 0,1 6.5,16M18.92,6C18.72,5.42 18.16,5 17.5,5H6.5C5.84,5 5.28,5.42 5.08,6L3,12V20A1,1 0 0,0 4,21H5A1,1 0 0,0 6,20V19H18V20A1,1 0 0,0 19,21H20A1,1 0 0,0 21,20V12L18.92,6Z"/>'
         }
       </svg>
@@ -219,7 +253,9 @@ const RideSharingPage = () => {
         </button>
       </div>
 
-      <BottomNavigation />
+      <div className="relative z-50">
+        <BottomNavigation />
+      </div>
     </div>
   );
 };

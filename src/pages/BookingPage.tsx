@@ -42,21 +42,36 @@ const BookingPage = () => {
   }, [rideId, user]);
 
   const fetchRideAndProfile = async () => {
-    if (!rideId) return;
+    if (!rideId) {
+      setLoading(false);
+      return;
+    }
 
     try {
-      const { data: rideData } = await supabase
+      const { data: rideData, error: rideError } = await supabase
         .from('rides')
         .select(`
           *,
-          vehicles (category, name, number),
-          profiles:user_id (full_name, phone)
+          vehicles (category, name, number)
         `)
         .eq('id', rideId)
-        .single();
+        .maybeSingle();
+
+      if (rideError) {
+        console.error('Ride fetch error:', rideError);
+        setLoading(false);
+        return;
+      }
 
       if (rideData) {
-        setRide(rideData);
+        // Fetch driver profile separately
+        const { data: driverProfile } = await supabase
+          .from('profiles')
+          .select('full_name, phone')
+          .eq('user_id', rideData.user_id)
+          .maybeSingle();
+
+        setRide({ ...rideData, profiles: driverProfile });
         setPickupLocation(rideData.pickup_location);
         setPickupCoords([rideData.pickup_lng, rideData.pickup_lat]);
         setDropLocation(rideData.drop_location);
@@ -68,7 +83,7 @@ const BookingPage = () => {
           .from('profiles')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (profileData) {
           setProfile(profileData);
@@ -192,8 +207,13 @@ const BookingPage = () => {
 
   if (!ride) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Ride not found</p>
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+        <Car className="w-16 h-16 text-muted-foreground mb-4" />
+        <p className="text-lg font-semibold text-foreground mb-2">Ride not found</p>
+        <p className="text-muted-foreground text-center mb-6">This ride may have been cancelled or is no longer available</p>
+        <Button onClick={() => navigate('/ride-sharing')} variant="outline">
+          Browse Available Rides
+        </Button>
       </div>
     );
   }
