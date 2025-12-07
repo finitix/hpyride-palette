@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { ArrowLeft, Check, Car, Bike, ChevronRight } from "lucide-react";
+import { ArrowLeft, Check, Car, Bike, ChevronRight, Upload, X, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +23,7 @@ interface RouteOption {
   distance: number;
   duration: number;
   geometry: any;
+  cities: string[];
 }
 
 const VEHICLE_CATEGORIES: { value: VehicleCategory; label: string; icon: any }[] = [
@@ -71,6 +72,17 @@ const PostRidePage = () => {
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [existingVehicles, setExistingVehicles] = useState<any[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+  
+  // Vehicle Documents
+  const [rcBookFile, setRcBookFile] = useState<File | null>(null);
+  const [insuranceFile, setInsuranceFile] = useState<File | null>(null);
+  const [pollutionFile, setPollutionFile] = useState<File | null>(null);
+  
+  // Vehicle Images
+  const [frontImage, setFrontImage] = useState<File | null>(null);
+  const [rearImage, setRearImage] = useState<File | null>(null);
+  const [leftImage, setLeftImage] = useState<File | null>(null);
+  const [rightImage, setRightImage] = useState<File | null>(null);
 
   // Step 3: Pricing
   const [seatsAvailable, setSeatsAvailable] = useState(1);
@@ -97,21 +109,10 @@ const PostRidePage = () => {
       style: "mapbox://styles/mapbox/streets-v12",
       center,
       zoom: 12,
+      attributionControl: false,
     });
 
-    map.current.on('load', () => {
-      // Add markers when map is loaded
-      if (pickupCoords) {
-        new mapboxgl.Marker({ color: '#22C55E' })
-          .setLngLat(pickupCoords)
-          .addTo(map.current!);
-      }
-      if (dropCoords) {
-        new mapboxgl.Marker({ color: '#F97316' })
-          .setLngLat(dropCoords)
-          .addTo(map.current!);
-      }
-    });
+    map.current.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left');
 
     return () => {
       map.current?.remove();
@@ -135,6 +136,40 @@ const PostRidePage = () => {
     setExistingVehicles(data || []);
   };
 
+  const getCitiesOnRoute = async (geometry: any): Promise<string[]> => {
+    const cities: string[] = [];
+    const coords = geometry.coordinates;
+    
+    // Sample 5 points along the route
+    const sampleIndices = [
+      0,
+      Math.floor(coords.length * 0.25),
+      Math.floor(coords.length * 0.5),
+      Math.floor(coords.length * 0.75),
+      coords.length - 1
+    ];
+
+    for (const idx of sampleIndices) {
+      const [lng, lat] = coords[idx];
+      try {
+        const response = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=place&access_token=${mapboxgl.accessToken}`
+        );
+        const data = await response.json();
+        if (data.features?.[0]?.text) {
+          const cityName = data.features[0].text;
+          if (!cities.includes(cityName)) {
+            cities.push(cityName);
+          }
+        }
+      } catch (error) {
+        console.error('Error getting city:', error);
+      }
+    }
+    
+    return cities;
+  };
+
   const fetchMultipleRoutes = async () => {
     if (!pickupCoords || !dropCoords || !map.current) return;
 
@@ -156,18 +191,24 @@ const PostRidePage = () => {
 
       if (data.routes && data.routes.length > 0) {
         const routeLabels = ['Fastest', 'Alternative 1', 'Alternative 2', 'Alternative 3'];
-        const newRoutes: RouteOption[] = data.routes.map((route: any, index: number) => ({
-          id: `route-${index}`,
-          label: routeLabels[index] || `Route ${index + 1}`,
-          color: ROUTE_COLORS[index] || '#888888',
-          distance: route.distance / 1000,
-          duration: Math.round(route.duration / 60),
-          geometry: route.geometry,
-        }));
+        
+        const newRoutes: RouteOption[] = await Promise.all(
+          data.routes.map(async (route: any, index: number) => {
+            const cities = await getCitiesOnRoute(route.geometry);
+            return {
+              id: `route-${index}`,
+              label: routeLabels[index] || `Route ${index + 1}`,
+              color: ROUTE_COLORS[index] || '#888888',
+              distance: route.distance / 1000,
+              duration: Math.round(route.duration / 60),
+              geometry: route.geometry,
+              cities,
+            };
+          })
+        );
 
         setRoutes(newRoutes);
         
-        // Select first route by default
         if (newRoutes.length > 0) {
           setSelectedRouteId(newRoutes[0].id);
           setDistance(newRoutes[0].distance);
@@ -176,7 +217,7 @@ const PostRidePage = () => {
         }
 
         // Draw all routes on map
-        newRoutes.forEach((route, index) => {
+        newRoutes.forEach((route) => {
           if (map.current) {
             map.current.addSource(route.id, {
               type: 'geojson',
@@ -221,13 +262,26 @@ const PostRidePage = () => {
     setDuration(route.duration);
     setRoutePolyline(JSON.stringify(route.geometry));
 
-    // Update line widths on map
     routes.forEach((r) => {
       if (map.current?.getLayer(r.id)) {
         map.current.setPaintProperty(r.id, 'line-width', r.id === route.id ? 6 : 3);
         map.current.setPaintProperty(r.id, 'line-opacity', r.id === route.id ? 1 : 0.5);
       }
     });
+  };
+
+  const uploadFile = async (file: File, bucket: string, folder: string): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user?.id}/${folder}/${Date.now()}.${fileExt}`;
+    
+    const { error } = await supabase.storage.from(bucket).upload(fileName, file);
+    if (error) {
+      console.error('Upload error:', error);
+      return null;
+    }
+    
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
+    return urlData.publicUrl;
   };
 
   const handleSubmit = async () => {
@@ -241,6 +295,18 @@ const PostRidePage = () => {
       let vehicleId = selectedVehicleId;
 
       if (!vehicleId && vehicleName && vehicleNumber) {
+        // Upload documents
+        let rcBookUrl = null, insuranceUrl = null, pollutionUrl = null;
+        let frontUrl = null, rearUrl = null, leftUrl = null, rightUrl = null;
+
+        if (rcBookFile) rcBookUrl = await uploadFile(rcBookFile, 'vehicle-documents', 'rc');
+        if (insuranceFile) insuranceUrl = await uploadFile(insuranceFile, 'vehicle-documents', 'insurance');
+        if (pollutionFile) pollutionUrl = await uploadFile(pollutionFile, 'vehicle-documents', 'pollution');
+        if (frontImage) frontUrl = await uploadFile(frontImage, 'vehicle-images', 'front');
+        if (rearImage) rearUrl = await uploadFile(rearImage, 'vehicle-images', 'rear');
+        if (leftImage) leftUrl = await uploadFile(leftImage, 'vehicle-images', 'left');
+        if (rightImage) rightUrl = await uploadFile(rightImage, 'vehicle-images', 'right');
+
         const { data: newVehicle, error: vehicleError } = await supabase
           .from('vehicles')
           .insert({
@@ -250,6 +316,12 @@ const PostRidePage = () => {
             name: vehicleName,
             number: vehicleNumber.toUpperCase(),
             has_ac: hasAc,
+            rc_book_url: rcBookUrl,
+            insurance_url: insuranceUrl,
+            pollution_url: pollutionUrl,
+            front_image_url: frontUrl,
+            rear_image_url: rearUrl,
+            side_image_url: leftUrl || rightUrl,
           })
           .select()
           .single();
@@ -285,7 +357,7 @@ const PostRidePage = () => {
           female_only: femaleOnly,
           luggage_allowed: luggageAllowed,
           pickup_flexibility: pickupFlexibility,
-          status: 'pending',
+          status: 'published',
         });
 
       if (rideError) throw rideError;
@@ -312,6 +384,37 @@ const PostRidePage = () => {
     if (coords) setDropCoords(coords);
   };
 
+  const FileUploadButton = ({ 
+    label, 
+    file, 
+    setFile, 
+    optional = false 
+  }: { 
+    label: string; 
+    file: File | null; 
+    setFile: (f: File | null) => void;
+    optional?: boolean;
+  }) => (
+    <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+      <div className="flex-1">
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        {optional && <p className="text-xs text-muted-foreground">Optional</p>}
+        {file && <p className="text-xs text-green-600 mt-1">✓ {file.name}</p>}
+      </div>
+      <label className="cursor-pointer">
+        <input
+          type="file"
+          accept="image/*,.pdf"
+          className="hidden"
+          onChange={(e) => setFile(e.target.files?.[0] || null)}
+        />
+        <div className="px-3 py-1.5 bg-foreground text-background text-sm rounded-lg">
+          {file ? 'Change' : 'Upload'}
+        </div>
+      </label>
+    </div>
+  );
+
   if (showSuccess) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -319,14 +422,16 @@ const PostRidePage = () => {
           <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 animate-scale-in">
             <Check className="w-10 h-10 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">Ride Posted!</h2>
-          <p className="text-muted-foreground mb-2">Your ride is sent for verification</p>
-          <p className="text-sm text-muted-foreground">After verified, it will be published</p>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Ride Published!</h2>
+          <p className="text-muted-foreground mb-2">Your ride is now live on the map</p>
           <p className="text-sm text-muted-foreground mt-4">Thank you for using HpyRide</p>
         </div>
       </div>
     );
   }
+
+  const verifiedVehicles = existingVehicles.filter(v => v.is_verified);
+  const unverifiedVehicles = existingVehicles.filter(v => !v.is_verified);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -387,23 +492,30 @@ const PostRidePage = () => {
                       <button
                         key={route.id}
                         onClick={() => selectRoute(route)}
-                        className={`w-full p-3 rounded-lg border flex items-center justify-between ${
+                        className={`w-full p-3 rounded-lg border text-left ${
                           selectedRouteId === route.id
                             ? 'border-foreground bg-muted'
                             : 'border-border'
                         }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <div 
-                            className="w-4 h-4 rounded-full" 
-                            style={{ backgroundColor: route.color }}
-                          />
-                          <span className="font-medium text-foreground">{route.label}</span>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-3">
+                            <div 
+                              className="w-4 h-4 rounded-full" 
+                              style={{ backgroundColor: route.color }}
+                            />
+                            <span className="font-medium text-foreground">{route.label}</span>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-foreground">{route.distance.toFixed(1)} km</p>
+                            <p className="text-xs text-muted-foreground">{route.duration} mins</p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-foreground">{route.distance.toFixed(1)} km</p>
-                          <p className="text-xs text-muted-foreground">{route.duration} mins</p>
-                        </div>
+                        {route.cities.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Via: {route.cities.slice(0, 4).join(' → ')}
+                          </p>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -425,11 +537,15 @@ const PostRidePage = () => {
 
         {step === 2 && (
           <div className="space-y-4">
-            {existingVehicles.length > 0 && (
+            {/* Verified Vehicles First */}
+            {verifiedVehicles.length > 0 && (
               <div className="bg-card border border-border rounded-xl p-4">
-                <h3 className="font-semibold text-foreground mb-3">Your Vehicles</h3>
+                <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  Verified Vehicles
+                </h3>
                 <div className="space-y-2">
-                  {existingVehicles.map((vehicle) => (
+                  {verifiedVehicles.map((vehicle) => (
                     <button
                       key={vehicle.id}
                       onClick={() => {
@@ -451,9 +567,41 @@ const PostRidePage = () => {
                           <p className="text-sm text-muted-foreground">{vehicle.number}</p>
                         </div>
                       </div>
-                      {vehicle.is_verified && (
-                        <span className="text-xs bg-green-500/20 text-green-600 px-2 py-1 rounded">Verified</span>
-                      )}
+                      <span className="text-xs bg-green-500/20 text-green-600 px-2 py-1 rounded">Verified</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Unverified Vehicles */}
+            {unverifiedVehicles.length > 0 && (
+              <div className="bg-card border border-border rounded-xl p-4">
+                <h3 className="font-semibold text-foreground mb-3">Other Vehicles</h3>
+                <div className="space-y-2">
+                  {unverifiedVehicles.map((vehicle) => (
+                    <button
+                      key={vehicle.id}
+                      onClick={() => {
+                        setSelectedVehicleId(vehicle.id);
+                        setVehicleCategory(vehicle.category);
+                        setVehicleName(vehicle.name);
+                        setVehicleNumber(vehicle.number);
+                      }}
+                      className={`w-full p-3 rounded-lg border flex items-center justify-between ${
+                        selectedVehicleId === vehicle.id
+                          ? 'border-foreground bg-muted'
+                          : 'border-border'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Car className="w-5 h-5" />
+                        <div className="text-left">
+                          <p className="font-medium text-foreground">{vehicle.name}</p>
+                          <p className="text-sm text-muted-foreground">{vehicle.number}</p>
+                        </div>
+                      </div>
+                      <span className="text-xs bg-yellow-500/20 text-yellow-600 px-2 py-1 rounded">Pending</span>
                     </button>
                   ))}
                 </div>
@@ -517,6 +665,27 @@ const PostRidePage = () => {
                   value={vehicleNumber}
                   onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
                 />
+              </div>
+
+              {/* Documents Section */}
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">Documents</label>
+                <div className="space-y-2">
+                  <FileUploadButton label="RC Book" file={rcBookFile} setFile={setRcBookFile} />
+                  <FileUploadButton label="Insurance" file={insuranceFile} setFile={setInsuranceFile} />
+                  <FileUploadButton label="Pollution Certificate" file={pollutionFile} setFile={setPollutionFile} optional />
+                </div>
+              </div>
+
+              {/* Vehicle Images Section */}
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">Vehicle Images</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <FileUploadButton label="Front" file={frontImage} setFile={setFrontImage} />
+                  <FileUploadButton label="Rear" file={rearImage} setFile={setRearImage} />
+                  <FileUploadButton label="Left Side" file={leftImage} setFile={setLeftImage} />
+                  <FileUploadButton label="Right Side" file={rightImage} setFile={setRightImage} />
+                </div>
               </div>
             </div>
 
@@ -723,10 +892,10 @@ const PostRidePage = () => {
               {submitting ? (
                 <span className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
-                  Posting...
+                  Publishing...
                 </span>
               ) : (
-                'Submit Ride'
+                'Publish Ride'
               )}
             </Button>
           </div>

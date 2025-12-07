@@ -35,7 +35,10 @@ const BookRidePage = () => {
       style: "mapbox://styles/mapbox/streets-v12",
       center,
       zoom: 14,
+      attributionControl: false,
     });
+
+    map.current.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left');
 
     return () => {
       map.current?.remove();
