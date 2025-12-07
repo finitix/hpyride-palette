@@ -12,10 +12,10 @@ serve(async (req) => {
 
   try {
     const { messages, context } = await req.json();
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
-    if (!GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY is not configured');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
     console.log('Received messages:', messages);
@@ -45,46 +45,43 @@ Example responses:
 
 Never be distracting or provide complex information. Safety first!`;
 
-    const geminiMessages = [
-      {
-        role: "user",
-        parts: [{ text: systemPrompt }]
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
       },
-      {
-        role: "model", 
-        parts: [{ text: "Got it! I'm your friendly travel buddy. Let's make this journey fun! 🚗✨" }]
-      },
-      ...messages.map((msg: any) => ({
-        role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }]
-      }))
-    ];
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: geminiMessages,
-          generationConfig: {
-            temperature: 0.9,
-            maxOutputTokens: 100,
-          }
-        })
-      }
-    );
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages,
+        ],
+      }),
+    });
 
     if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: 'Rate limit exceeded, please try again later.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: 'Payment required, please add funds.' }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       const error = await response.text();
-      console.error('Gemini API error:', error);
-      throw new Error(`Gemini API error: ${response.status}`);
+      console.error('AI gateway error:', response.status, error);
+      throw new Error(`AI gateway error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('Gemini response:', data);
+    console.log('AI response:', data);
 
-    const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm here to help! 🚗";
+    const aiResponse = data.choices?.[0]?.message?.content || "I'm here to help! 🚗";
 
     return new Response(JSON.stringify({ response: aiResponse }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
