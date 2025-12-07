@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean | null
+          last_login: string | null
+          name: string
+          password_hash: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean | null
+          last_login?: string | null
+          name: string
+          password_hash: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean | null
+          last_login?: string | null
+          name?: string
+          password_hash?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           alternate_phone: string | null
@@ -361,12 +397,14 @@ export type Database = {
           location_lng: number | null
           model: string
           ownership: string
+          rejection_reason: string | null
           service_history_available: boolean | null
           status: string | null
           transmission: string
           updated_at: string
           user_id: string
           variant: string | null
+          verification_status: string | null
           year_of_purchase: number
         }
         Insert: {
@@ -385,12 +423,14 @@ export type Database = {
           location_lng?: number | null
           model: string
           ownership: string
+          rejection_reason?: string | null
           service_history_available?: boolean | null
           status?: string | null
           transmission: string
           updated_at?: string
           user_id: string
           variant?: string | null
+          verification_status?: string | null
           year_of_purchase: number
         }
         Update: {
@@ -409,12 +449,14 @@ export type Database = {
           location_lng?: number | null
           model?: string
           ownership?: string
+          rejection_reason?: string | null
           service_history_available?: boolean | null
           status?: string | null
           transmission?: string
           updated_at?: string
           user_id?: string
           variant?: string | null
+          verification_status?: string | null
           year_of_purchase?: number
         }
         Relationships: []
@@ -427,6 +469,7 @@ export type Database = {
           full_name: string | null
           gender: string | null
           id: string
+          is_verified: boolean | null
           phone: string | null
           updated_at: string
           user_id: string
@@ -438,6 +481,7 @@ export type Database = {
           full_name?: string | null
           gender?: string | null
           id?: string
+          is_verified?: boolean | null
           phone?: string | null
           updated_at?: string
           user_id: string
@@ -449,6 +493,7 @@ export type Database = {
           full_name?: string | null
           gender?: string | null
           id?: string
+          is_verified?: boolean | null
           phone?: string | null
           updated_at?: string
           user_id?: string
@@ -521,6 +566,7 @@ export type Database = {
           pickup_lng: number
           pickup_location: string
           price_per_km: number
+          rejection_reason: string | null
           ride_date: string
           ride_time: string
           route_polyline: string | null
@@ -531,6 +577,7 @@ export type Database = {
           updated_at: string
           user_id: string
           vehicle_id: string | null
+          verification_status: string | null
         }
         Insert: {
           created_at?: string
@@ -549,6 +596,7 @@ export type Database = {
           pickup_lng: number
           pickup_location: string
           price_per_km: number
+          rejection_reason?: string | null
           ride_date: string
           ride_time: string
           route_polyline?: string | null
@@ -559,6 +607,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           vehicle_id?: string | null
+          verification_status?: string | null
         }
         Update: {
           created_at?: string
@@ -577,6 +626,7 @@ export type Database = {
           pickup_lng?: number
           pickup_location?: string
           price_per_km?: number
+          rejection_reason?: string | null
           ride_date?: string
           ride_time?: string
           route_polyline?: string | null
@@ -587,6 +637,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           vehicle_id?: string | null
+          verification_status?: string | null
         }
         Relationships: [
           {
@@ -597,6 +648,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_verifications: {
+        Row: {
+          created_at: string
+          date_of_birth: string
+          full_name: string
+          id: string
+          id_back_url: string
+          id_front_url: string
+          id_type: string
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          selfie_video_url: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date_of_birth: string
+          full_name: string
+          id?: string
+          id_back_url: string
+          id_front_url: string
+          id_type: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          selfie_video_url: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date_of_birth?: string
+          full_name?: string
+          id?: string
+          id_back_url?: string
+          id_front_url?: string
+          id_type?: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          selfie_video_url?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       vehicles: {
         Row: {
@@ -675,9 +798,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_user_verified: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
+      app_role: "super_admin" | "admin" | "moderator"
       booking_status:
         | "pending"
         | "confirmed"
@@ -830,6 +961,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["super_admin", "admin", "moderator"],
       booking_status: [
         "pending",
         "confirmed",

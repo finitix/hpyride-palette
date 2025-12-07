@@ -1,13 +1,34 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Mail, Phone, Edit, LogOut } from "lucide-react";
+import { ArrowLeft, User, Mail, Phone, Edit, LogOut, Shield, ShieldCheck, ShieldX, Clock, Car, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import BottomNavigation from "@/components/BottomNavigation";
+import VerificationPopup from "@/components/VerificationPopup";
 import { toast } from "sonner";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const [verification, setVerification] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchVerification();
+    }
+  }, [user]);
+
+  const fetchVerification = async () => {
+    const { data } = await supabase
+      .from('user_verifications')
+      .select('*')
+      .eq('user_id', user?.id)
+      .single();
+    setVerification(data);
+    setLoading(false);
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -15,8 +36,21 @@ const ProfilePage = () => {
     navigate("/auth", { replace: true });
   };
 
+  const getVerificationStatus = () => {
+    if (!verification) return { icon: Shield, text: "Not Verified", color: "text-muted-foreground", bg: "bg-muted" };
+    if (verification.status === 'verified') return { icon: ShieldCheck, text: "Verified", color: "text-green-500", bg: "bg-green-500/20" };
+    if (verification.status === 'pending') return { icon: Clock, text: "Pending", color: "text-yellow-500", bg: "bg-yellow-500/20" };
+    if (verification.status === 'rejected') return { icon: ShieldX, text: "Rejected", color: "text-red-500", bg: "bg-red-500/20" };
+    return { icon: Shield, text: "Not Verified", color: "text-muted-foreground", bg: "bg-muted" };
+  };
+
+  const status = getVerificationStatus();
+  const StatusIcon = status.icon;
+
   return (
     <div className="min-h-screen bg-background pb-20">
+      <VerificationPopup />
+      
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate("/home")} className="p-1">
@@ -28,7 +62,7 @@ const ProfilePage = () => {
       {/* Profile Card */}
       <div className="px-4 py-6">
         <div className="bg-card rounded-2xl shadow-lg p-6">
-          <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-4 mb-4">
             <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center">
               <User className="w-10 h-10 text-muted-foreground" />
             </div>
@@ -42,6 +76,20 @@ const ProfilePage = () => {
               <Edit className="w-5 h-5 text-muted-foreground" />
             </button>
           </div>
+
+          {/* Verification Status */}
+          <button 
+            onClick={() => navigate('/verify')}
+            className={`w-full flex items-center justify-between p-3 rounded-xl mb-4 ${status.bg}`}
+          >
+            <div className="flex items-center gap-3">
+              <StatusIcon className={`w-5 h-5 ${status.color}`} />
+              <span className={`font-medium ${status.color}`}>{status.text}</span>
+            </div>
+            {verification?.status !== 'verified' && (
+              <span className="text-sm text-foreground">Verify Now →</span>
+            )}
+          </button>
 
           <div className="space-y-4">
             <div className="flex items-center gap-4 p-3 bg-secondary rounded-xl">
@@ -70,16 +118,17 @@ const ProfilePage = () => {
         <h3 className="text-lg font-bold text-foreground mb-4">Quick Actions</h3>
         <div className="space-y-3">
           {[
-            { label: "My Rides", path: "/my-rides" },
-            { label: "My Rentals", path: "/my-rentals" },
-            { label: "Payment Methods", path: "/payments" },
-            { label: "Help & Support", path: "/support" },
+            { label: "My Rides", path: "/my-rides", icon: Car },
+            { label: "My Listed Cars", path: "/pre-owned/my-listings", icon: Car },
+            { label: "My Interested Cars", path: "/pre-owned/my-interests", icon: Heart },
+            { label: "Help & Support", path: "/support", icon: null },
           ].map((item) => (
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className="w-full text-left px-4 py-4 bg-card border border-border rounded-xl hover:bg-secondary transition-colors"
+              className="w-full text-left px-4 py-4 bg-card border border-border rounded-xl hover:bg-secondary transition-colors flex items-center gap-3"
             >
+              {item.icon && <item.icon className="w-5 h-5 text-muted-foreground" />}
               <span className="font-medium text-foreground">{item.label}</span>
             </button>
           ))}
