@@ -62,8 +62,11 @@ const ServiceCarousel = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [comingSoonOpen, setComingSoonOpen] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
+    if (isPaused) return;
+    
     const interval = setInterval(() => {
       setIsTransitioning(true);
       setTimeout(() => {
@@ -73,7 +76,11 @@ const ServiceCarousel = () => {
     }, 4000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isPaused]);
+
+  const handleUserInteraction = () => {
+    setIsPaused(true);
+  };
 
   const currentCard = serviceCards[currentIndex];
 
@@ -117,6 +124,8 @@ const ServiceCarousel = () => {
           className={`bg-card rounded-2xl shadow-xl p-6 transition-all duration-300 ${
             isTransitioning ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0"
           }`}
+          onTouchStart={handleUserInteraction}
+          onMouseDown={handleUserInteraction}
         >
           <div className="space-y-4">
             {currentCard.fields.map((field, index) => {
@@ -129,6 +138,7 @@ const ServiceCarousel = () => {
                     placeholder={field.placeholder}
                     className="pl-12"
                     disabled={currentCard.comingSoon}
+                    onFocus={handleUserInteraction}
                   />
                 </div>
               );

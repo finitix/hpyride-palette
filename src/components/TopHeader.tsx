@@ -1,4 +1,4 @@
-import { Menu, Bell, User } from "lucide-react";
+import { Menu, Bell } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -84,25 +84,11 @@ const TopHeader = () => {
         </div>
         
         <div className="flex items-center gap-3">
+          <DonationCard />
           <button className="p-2 rounded-full hover:bg-splash-fg/10 transition-colors">
             <Bell className="w-5 h-5" />
           </button>
-          <button 
-            onClick={() => navigate("/profile")}
-            className="w-9 h-9 rounded-full bg-splash-fg/20 flex items-center justify-center"
-          >
-            <User className="w-5 h-5" />
-          </button>
         </div>
-      </div>
-
-      {/* Subtitle Row with Donation Card */}
-      <div className="px-4 pb-4 flex items-center justify-between">
-        <div>
-          <p className="text-splash-fg/80 text-sm">Welcome back!</p>
-          <p className="text-splash-fg/60 text-xs">Where would you like to go today?</p>
-        </div>
-        <DonationCard />
       </div>
     </header>
   );

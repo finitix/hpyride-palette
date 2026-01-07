@@ -1,10 +1,10 @@
-import { Home, Car, Key, User } from "lucide-react";
+import { Home, Car, Heart, User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const tabs = [
   { id: "home", label: "Home", icon: Home, path: "/home" },
   { id: "rides", label: "Rides", icon: Car, path: "/ride-sharing" },
-  { id: "rentals", label: "Rentals", icon: Key, path: "/car-rentals" },
+  { id: "donate", label: "Donate", icon: Heart, path: "/wallet" },
   { id: "profile", label: "Profile", icon: User, path: "/profile" },
 ];
 
@@ -25,6 +25,7 @@ const BottomNavigation = () => {
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const active = isActive(tab.path);
+          const isDonate = tab.id === "donate";
           
           return (
             <button
@@ -34,8 +35,14 @@ const BottomNavigation = () => {
                 active ? "nav-active" : "nav-inactive"
               }`}
             >
-              <Icon className={`w-5 h-5 ${active ? "text-foreground" : "text-muted-foreground"}`} />
-              <span className={`text-xs ${active ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+              <Icon className={`w-5 h-5 ${
+                isDonate ? "text-pink-500" : 
+                active ? "text-foreground" : "text-muted-foreground"
+              } ${isDonate && active ? "fill-pink-500" : ""}`} />
+              <span className={`text-xs ${
+                isDonate ? "text-pink-500 font-medium" :
+                active ? "font-semibold text-foreground" : "text-muted-foreground"
+              }`}>
                 {tab.label}
               </span>
             </button>
