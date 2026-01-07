@@ -123,7 +123,7 @@ const TopHeader = () => {
               className="flex items-center gap-1.5 bg-gradient-to-r from-pink-500 to-red-500 text-white px-2.5 py-1.5 rounded-full text-[10px] font-bold shadow-md hover:shadow-lg transition-all hover:scale-105"
             >
               <Heart className="w-3 h-3 fill-white" />
-              <span>Free</span>
+              <span>Donate</span>
               <Sparkles className="w-2.5 h-2.5" />
             </button>
           </div>
