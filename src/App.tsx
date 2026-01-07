@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { AdminAuthProvider } from "@/contexts/AdminAuthContext";
+import { AdminAuthProvider } from "@/admin/contexts/AdminAuthContext";
 import SplashScreen from "@/pages/SplashScreen";
 import AuthPage from "@/pages/AuthPage";
 import WelcomePage from "@/pages/WelcomePage";
@@ -35,15 +35,15 @@ import CarChatPage from "@/pages/preowned/CarChatPage";
 import FiltersPage from "@/pages/preowned/FiltersPage";
 import ReportListingPage from "@/pages/preowned/ReportListingPage";
 
-// Admin pages
-import AdminLoginPage from "@/pages/admin/AdminLoginPage";
-import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
-import AdminVerifyUsersPage from "@/pages/admin/AdminVerifyUsersPage";
-import AdminVerifyRidesPage from "@/pages/admin/AdminVerifyRidesPage";
-import AdminVerifyCarsPage from "@/pages/admin/AdminVerifyCarsPage";
-import AdminUsersPage from "@/pages/admin/AdminUsersPage";
-import AdminVehiclesPage from "@/pages/admin/AdminVehiclesPage";
-import AdminSettingsPage from "@/pages/admin/AdminSettingsPage";
+// Admin pages (separate admin website)
+import AdminLoginPage from "@/admin/pages/LoginPage";
+import AdminDashboardPage from "@/admin/pages/DashboardPage";
+import AdminVerifyUsersPage from "@/admin/pages/VerifyUsersPage";
+import AdminVerifyRidesPage from "@/admin/pages/VerifyRidesPage";
+import AdminVerifyCarsPage from "@/admin/pages/VerifyCarsPage";
+import AdminUsersPage from "@/admin/pages/UsersPage";
+import AdminVehiclesPage from "@/admin/pages/VehiclesPage";
+import AdminSettingsPage from "@/admin/pages/SettingsPage";
 
 const queryClient = new QueryClient();
 
@@ -85,7 +85,7 @@ const App = () => (
               <Route path="/pre-owned/filters" element={<FiltersPage />} />
               <Route path="/pre-owned/report/:carId" element={<ReportListingPage />} />
 
-              {/* Admin routes */}
+              {/* Admin routes (separate admin website) */}
               <Route path="/admin" element={<AdminLoginPage />} />
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
               <Route path="/admin/verify-users" element={<AdminVerifyUsersPage />} />

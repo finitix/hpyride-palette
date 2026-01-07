@@ -55,6 +55,12 @@ serve(async (req) => {
     const adminUser = adminResult[0];
     console.log('Admin authenticated:', adminUser.email, 'Action:', action);
 
+    // Update last login
+    await supabaseAdmin
+      .from('admin_users')
+      .update({ last_login: new Date().toISOString() })
+      .eq('id', adminUser.id);
+
     let result;
 
     switch (action) {
