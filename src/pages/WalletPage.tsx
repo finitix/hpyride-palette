@@ -146,7 +146,49 @@ const WalletPage = () => {
           </div>
         </Card>
 
-        {/* Use Your Balance */}
+        {/* Free Donation Card */}
+        <Card className="p-5 rounded-3xl border-2 border-pink-500/30 bg-gradient-to-br from-pink-500/10 via-red-500/5 to-orange-500/10">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-pink-500 to-red-500 flex items-center justify-center animate-pulse">
+              <Heart className="w-7 h-7 text-white fill-white" />
+            </div>
+            <div className="flex-1">
+              <h4 className="font-bold text-lg">Free Donation</h4>
+              <p className="text-xs text-muted-foreground">Watch ad & donate ₹1 to charity for FREE</p>
+            </div>
+            <Button 
+              size="sm" 
+              className="rounded-full bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600"
+              onClick={() => {
+                setIsWatching(true);
+                setWatchProgress(0);
+                const interval = setInterval(() => {
+                  setWatchProgress(prev => {
+                    if (prev >= 100) {
+                      clearInterval(interval);
+                      setIsWatching(false);
+                      toast({
+                        title: "🎉 Thank you!",
+                        description: "₹1 donated to charity on your behalf!",
+                      });
+                      return 100;
+                    }
+                    return prev + 5;
+                  });
+                }, 150);
+              }}
+            >
+              <Play className="w-4 h-4 mr-1 fill-white" />
+              Donate
+            </Button>
+          </div>
+          {isWatching && watchProgress < 100 && (
+            <div className="mt-3">
+              <Progress value={watchProgress} className="h-1.5" />
+            </div>
+          )}
+        </Card>
+
         <div>
           <h3 className="text-lg font-bold mb-4">Use Your Balance</h3>
           <div className="grid grid-cols-3 gap-3">
