@@ -121,6 +121,12 @@ serve(async (req) => {
     let result;
 
     switch (action) {
+      case 'verify_login': {
+        // Just return the authenticated admin info
+        result = { admin: adminUser };
+        break;
+      }
+
       case 'get_verifications': {
         const query = supabaseAdmin
           .from('user_verifications')
