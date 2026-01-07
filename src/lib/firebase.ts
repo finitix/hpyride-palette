@@ -1,3 +1,4 @@
+// Firebase configuration for HpyRide
 import { initializeApp } from "firebase/app";
 import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, GoogleAuthProvider, signInWithPopup, ConfirmationResult } from "firebase/auth";
 import { getMessaging, getToken, onMessage, Messaging } from "firebase/messaging";
