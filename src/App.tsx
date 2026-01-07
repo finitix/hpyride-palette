@@ -22,6 +22,7 @@ import CarRentalsPage from "@/pages/CarRentalsPage";
 import DriverPoolPage from "@/pages/DriverPoolPage";
 import ProfilePage from "@/pages/ProfilePage";
 import VerificationPage from "@/pages/VerificationPage";
+import WalletPage from "@/pages/WalletPage";
 import NotFound from "@/pages/NotFound";
 
 // Pre-owned car pages
@@ -74,6 +75,7 @@ const App = () => (
                 <Route path="/driver-pool" element={<DriverPoolPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/verify" element={<VerificationPage />} />
+                <Route path="/wallet" element={<WalletPage />} />
                 
                 {/* Pre-owned car routes */}
                 <Route path="/pre-owned" element={<PreOwnedHomePage />} />
