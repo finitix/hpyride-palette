@@ -360,12 +360,13 @@ serve(async (req) => {
       }
 
       case 'get_stats': {
-        const [rides, users, pendingVerifications, vehicles, cars] = await Promise.all([
-          supabaseAdmin.from('rides').select('id, status', { count: 'exact' }),
+        const [rides, users, pendingVerifications, vehicles, cars, bookings] = await Promise.all([
+          supabaseAdmin.from('rides').select('id, status, created_at', { count: 'exact' }),
           supabaseAdmin.from('profiles').select('id', { count: 'exact' }),
           supabaseAdmin.from('user_verifications').select('id', { count: 'exact' }).eq('status', 'pending'),
           supabaseAdmin.from('vehicles').select('id', { count: 'exact' }),
           supabaseAdmin.from('pre_owned_cars').select('id', { count: 'exact' }),
+          supabaseAdmin.from('bookings').select('id, status, created_at', { count: 'exact' }),
         ]);
 
         const pendingRides = await supabaseAdmin
@@ -378,14 +379,71 @@ serve(async (req) => {
           .select('id', { count: 'exact' })
           .eq('verification_status', 'pending');
 
+        const completedRides = await supabaseAdmin
+          .from('rides')
+          .select('id', { count: 'exact' })
+          .eq('status', 'completed');
+
+        // Get daily stats for charts (last 7 days)
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        
+        const { data: recentRides } = await supabaseAdmin
+          .from('rides')
+          .select('id, created_at')
+          .gte('created_at', sevenDaysAgo.toISOString());
+
+        const { data: recentUsers } = await supabaseAdmin
+          .from('profiles')
+          .select('id, created_at')
+          .gte('created_at', sevenDaysAgo.toISOString());
+
+        // Group by day
+        const dailyRides: { [key: string]: number } = {};
+        const dailyUsers: { [key: string]: number } = {};
+        
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date();
+          date.setDate(date.getDate() - i);
+          const dayKey = date.toISOString().split('T')[0];
+          dailyRides[dayKey] = 0;
+          dailyUsers[dayKey] = 0;
+        }
+
+        (recentRides || []).forEach((r: any) => {
+          const dayKey = r.created_at.split('T')[0];
+          if (dailyRides[dayKey] !== undefined) dailyRides[dayKey]++;
+        });
+
+        (recentUsers || []).forEach((u: any) => {
+          const dayKey = u.created_at.split('T')[0];
+          if (dailyUsers[dayKey] !== undefined) dailyUsers[dayKey]++;
+        });
+
+        const chartData = {
+          dailyRides: Object.entries(dailyRides).map(([date, count]) => ({
+            date,
+            day: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
+            count
+          })),
+          dailyUsers: Object.entries(dailyUsers).map(([date, count]) => ({
+            date,
+            day: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
+            count
+          })),
+        };
+
         result = {
           totalRides: rides.count || 0,
+          completedRides: completedRides.count || 0,
           totalUsers: users.count || 0,
           pendingVerifications: pendingVerifications.count || 0,
           totalVehicles: vehicles.count || 0,
           totalCars: cars.count || 0,
+          totalBookings: bookings.count || 0,
           pendingRides: pendingRides.count || 0,
           pendingCars: pendingCars.count || 0,
+          chartData,
         };
         break;
       }
@@ -411,6 +469,98 @@ serve(async (req) => {
         );
         
         result = usersWithVerification;
+        break;
+      }
+
+      case 'get_admin_notifications': {
+        const { data: notifications, error } = await supabaseAdmin
+          .from('admin_notifications')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        result = notifications;
+        break;
+      }
+
+      case 'send_notification_to_all': {
+        // Get all user profiles
+        const { data: profiles, error: profileError } = await supabaseAdmin
+          .from('profiles')
+          .select('user_id');
+        
+        if (profileError) throw profileError;
+
+        // Create admin notification record
+        const { data: adminNotif, error: adminError } = await supabaseAdmin
+          .from('admin_notifications')
+          .insert({
+            title: data.title,
+            message: data.message,
+            created_by: adminUser.id,
+            target_audience: 'all',
+          })
+          .select()
+          .single();
+
+        if (adminError) throw adminError;
+
+        // Create notification for each user
+        const notifications = (profiles || []).map((p: any) => ({
+          user_id: p.user_id,
+          title: data.title,
+          body: data.message,
+          type: 'admin_notification',
+          is_read: false,
+          data: { admin_notification_id: adminNotif.id },
+        }));
+
+        if (notifications.length > 0) {
+          const { error: insertError } = await supabaseAdmin
+            .from('notifications')
+            .insert(notifications);
+          
+          if (insertError) throw insertError;
+        }
+
+        result = { success: true, sent_to: notifications.length };
+        break;
+      }
+
+      case 'delete_admin_notification': {
+        const { error } = await supabaseAdmin
+          .from('admin_notifications')
+          .delete()
+          .eq('id', data.id);
+        
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
+      case 'get_bookings': {
+        const { data: bookingsData, error } = await supabaseAdmin
+          .from('bookings')
+          .select(`
+            *,
+            rides (pickup_location, drop_location, ride_date, ride_time)
+          `)
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+
+        const bookingsWithProfiles = await Promise.all(
+          (bookingsData || []).map(async (b: any) => {
+            const { data: profile } = await supabaseAdmin
+              .from('profiles')
+              .select('full_name, email, phone')
+              .eq('user_id', b.user_id)
+              .single();
+            return { ...b, profile };
+          })
+        );
+        
+        result = bookingsWithProfiles;
         break;
       }
 

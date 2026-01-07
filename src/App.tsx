@@ -24,6 +24,7 @@ import ProfilePage from "@/pages/ProfilePage";
 import VerificationPage from "@/pages/VerificationPage";
 import WalletPage from "@/pages/WalletPage";
 import NotFound from "@/pages/NotFound";
+import NotificationsPage from "@/pages/NotificationsPage";
 
 // Pre-owned car pages
 import PreOwnedHomePage from "@/pages/preowned/PreOwnedHomePage";
@@ -46,6 +47,7 @@ import AdminVerifyCarsPage from "@/admin/pages/VerifyCarsPage";
 import AdminUsersPage from "@/admin/pages/UsersPage";
 import AdminVehiclesPage from "@/admin/pages/VehiclesPage";
 import AdminSettingsPage from "@/admin/pages/SettingsPage";
+import AdminNotificationsPage from "@/admin/pages/NotificationsPage";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +78,7 @@ const App = () => (
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/verify" element={<VerificationPage />} />
                 <Route path="/wallet" element={<WalletPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
                 
                 {/* Pre-owned car routes */}
                 <Route path="/pre-owned" element={<PreOwnedHomePage />} />
@@ -98,6 +101,7 @@ const App = () => (
                 <Route path="/admin/users" element={<AdminUsersPage />} />
                 <Route path="/admin/vehicles" element={<AdminVehiclesPage />} />
                 <Route path="/admin/settings" element={<AdminSettingsPage />} />
+                <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
                 
                 <Route path="*" element={<NotFound />} />
               </Routes>

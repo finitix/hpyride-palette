@@ -231,10 +231,21 @@ const MyRidesPage = () => {
                         <h4 className="text-sm font-semibold text-foreground mb-2">Booking Requests</h4>
                         {ride.bookings.map((booking: any) => (
                           <div key={booking.id} className="py-3 border-b border-border last:border-b-0">
-                            <div className="flex items-center justify-between mb-2">
-                              <div>
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
                                 <p className="text-sm font-medium text-foreground">{booking.passenger_name}</p>
-                                <p className="text-xs text-muted-foreground">{booking.seats_booked} seat(s)</p>
+                                <p className="text-xs text-muted-foreground">{booking.passenger_phone}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-xs bg-secondary px-2 py-0.5 rounded">{booking.seats_booked} seat(s)</span>
+                                  {booking.pickup_location && (
+                                    <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                                      From: {booking.pickup_location}
+                                    </span>
+                                  )}
+                                </div>
+                                {booking.notes && (
+                                  <p className="text-xs text-muted-foreground mt-1 italic">"{booking.notes}"</p>
+                                )}
                               </div>
                               {booking.status === 'pending' ? (
                                 <div className="flex gap-2">
