@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Security code for admin registration - stored server-side only
+const ADMIN_SECURITY_CODE = "HpyRide.Com@2026";
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -13,22 +16,76 @@ serve(async (req) => {
   }
 
   try {
-    const { action, adminEmail, adminPassword, data } = await req.json();
+    const { action, adminEmail, adminPassword, data, securityCode, name } = await req.json();
     
-    // Validate required fields
-    if (!adminEmail || !adminPassword) {
-      return new Response(
-        JSON.stringify({ error: 'Missing credentials' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Create admin client with service role
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { persistSession: false } }
     );
+
+    // Handle admin signup separately (doesn't require existing credentials)
+    if (action === 'admin_signup') {
+      if (!adminEmail || !adminPassword || !securityCode || !name) {
+        return new Response(
+          JSON.stringify({ error: 'All fields are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify security code server-side
+      if (securityCode !== ADMIN_SECURITY_CODE) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid security code' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check if admin already exists
+      const { data: existingAdmin } = await supabaseAdmin
+        .from('admin_users')
+        .select('id')
+        .eq('email', adminEmail)
+        .single();
+
+      if (existingAdmin) {
+        return new Response(
+          JSON.stringify({ error: 'Admin with this email already exists' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Create new admin with hashed password
+      const { data: newAdmin, error: createError } = await supabaseAdmin
+        .rpc('create_admin_user', {
+          _email: adminEmail,
+          _password: adminPassword,
+          _name: name,
+          _role: 'admin'
+        });
+
+      if (createError) {
+        console.error('Create admin error:', createError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create admin account' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Admin account created successfully' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // For other actions, require authentication
+    if (!adminEmail || !adminPassword) {
+      return new Response(
+        JSON.stringify({ error: 'Missing credentials' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Verify admin credentials using secure database function
     const { data: adminResult, error: adminError } = await supabaseAdmin
