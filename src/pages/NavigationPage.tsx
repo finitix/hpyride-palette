@@ -2,12 +2,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { Volume2, VolumeX, Crosshair, X, CornerUpRight, CornerUpLeft, ArrowUp, MapPin, Navigation2 } from "lucide-react";
+import { Volume2, VolumeX, Crosshair, X, CornerUpRight, CornerUpLeft, ArrowUp, MapPin, Navigation2, MessageCircle, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useGeolocation } from "@/hooks/useGeolocation";
 import AIChatBubble from "@/components/AIChatBubble";
 import SOSButton from "@/components/SOSButton";
+import ShareLocationModal from "@/components/ShareLocationModal";
+import { toast } from "@/hooks/use-toast";
 
 mapboxgl.accessToken = "pk.eyJ1IjoiZGFybHoiLCJhIjoiY21pbDVzN3VqMTVncjNlcjQ1MGxsYWhoZyJ9.GOk93pZDh2T7inUnOXYF9A";
 
@@ -24,12 +25,13 @@ interface Step {
 const NavigationPage = () => {
   const navigate = useNavigate();
   const { bookingId } = useParams();
-  const { latitude, longitude, requestLocation } = useGeolocation();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const userMarker = useRef<mapboxgl.Marker | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const routeInitialized = useRef(false);
+  const lastSpokenStep = useRef(-1);
+  const speechSynthesis = useRef(window.speechSynthesis);
 
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -40,46 +42,72 @@ const NavigationPage = () => {
   const [distance, setDistance] = useState("");
   const [arrivalTime, setArrivalTime] = useState("");
   const [destination, setDestination] = useState("");
-  const [isMapReady, setIsMapReady] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [driverName, setDriverName] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
-  // Fetch booking immediately
+  // Voice navigation function
+  const speakInstruction = useCallback((text: string) => {
+    if (muted || !text) return;
+    
+    // Cancel any ongoing speech
+    speechSynthesis.current.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    utterance.lang = 'en-US';
+    
+    speechSynthesis.current.speak(utterance);
+  }, [muted]);
+
+  // Fetch booking immediately on mount
   useEffect(() => {
-    if (bookingId) fetchBooking();
+    if (bookingId) {
+      fetchBooking();
+    }
   }, [bookingId]);
 
-  // Start watching location
+  // Start location tracking
   useEffect(() => {
-    if ('geolocation' in navigator) {
-      // Get initial position immediately
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-        },
-        () => requestLocation(),
-        { enableHighAccuracy: true, timeout: 5000 }
-      );
-
-      watchIdRef.current = navigator.geolocation.watchPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-        },
-        (error) => console.error('Geolocation error:', error),
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 }
-      );
+    if (!('geolocation' in navigator)) {
+      toast({
+        title: "Geolocation not supported",
+        description: "Using pickup location as fallback",
+        variant: "destructive"
+      });
+      return;
     }
+
+    // Get initial position with shorter timeout
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      (err) => {
+        console.warn('Initial geolocation failed:', err);
+        // Will use pickup location as fallback
+      },
+      { enableHighAccuracy: false, timeout: 3000, maximumAge: 30000 }
+    );
+
+    // Watch position for updates
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      (err) => console.warn('Geolocation watch error:', err),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+    );
+
     return () => {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
+      speechSynthesis.current.cancel();
     };
   }, []);
 
@@ -91,21 +119,20 @@ const NavigationPage = () => {
         .eq('id', bookingId)
         .single();
 
-      setBooking(data);
-      if (data?.rides?.drop_location) {
-        setDestination(data.rides.drop_location);
-      }
-      if (data?.rides?.vehicle) {
-        setVehicleNumber(data.rides.vehicle.number || '');
-      }
-      // Get driver profile
-      if (data?.driver_id) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('user_id', data.driver_id)
-          .single();
-        if (profile?.full_name) setDriverName(profile.full_name);
+      if (data) {
+        setBooking(data);
+        setDestination(data.rides?.drop_location || '');
+        setVehicleNumber(data.rides?.vehicle?.number || '');
+        
+        // Get driver profile
+        if (data.driver_id) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('user_id', data.driver_id)
+            .single();
+          if (profile?.full_name) setDriverName(profile.full_name);
+        }
       }
     } catch (error) {
       console.error('Error fetching booking:', error);
@@ -119,13 +146,13 @@ const NavigationPage = () => {
     if (!mapContainer.current || map.current || !booking?.rides) return;
 
     const ride = booking.rides;
-    const loc = userLocation || (latitude && longitude ? { lat: latitude, lng: longitude } : null);
-    const center: [number, number] = loc ? [loc.lng, loc.lat] : [ride.pickup_lng, ride.pickup_lat];
-
+    // Use user location if available, otherwise use pickup location
+    const startLoc = userLocation || { lat: ride.pickup_lat, lng: ride.pickup_lng };
+    
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/navigation-night-v1",
-      center,
+      center: [startLoc.lng, startLoc.lat],
       zoom: 15,
       pitch: 60,
       bearing: 0,
@@ -133,13 +160,13 @@ const NavigationPage = () => {
     });
 
     map.current.on('load', () => {
-      setIsMapReady(true);
+      setMapLoaded(true);
       
       // Add destination marker
       const destEl = document.createElement('div');
       destEl.innerHTML = `
         <div class="relative">
-          <div class="w-10 h-10 bg-green-500 rounded-full border-4 border-white shadow-xl flex items-center justify-center animate-pulse">
+          <div class="w-10 h-10 bg-green-500 rounded-full border-4 border-white shadow-xl flex items-center justify-center">
             <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
             </svg>
@@ -162,6 +189,11 @@ const NavigationPage = () => {
       new mapboxgl.Marker(pickupEl)
         .setLngLat([ride.pickup_lng, ride.pickup_lat])
         .addTo(map.current!);
+
+      // Fetch initial route immediately with pickup location if no user location
+      const initialLat = userLocation?.lat || ride.pickup_lat;
+      const initialLng = userLocation?.lng || ride.pickup_lng;
+      fetchRoute(initialLat, initialLng, ride.drop_lat, ride.drop_lng);
     });
 
     return () => {
@@ -170,151 +202,159 @@ const NavigationPage = () => {
     };
   }, [booking]);
 
-  // Update route when location or map is ready
+  // Update route when user location changes
   useEffect(() => {
-    const loc = userLocation || (latitude && longitude ? { lat: latitude, lng: longitude } : null);
-    if (loc && booking && isMapReady) {
-      updateRoute(loc.lat, loc.lng);
+    if (userLocation && mapLoaded && booking?.rides) {
+      fetchRoute(userLocation.lat, userLocation.lng, booking.rides.drop_lat, booking.rides.drop_lng);
     }
-  }, [userLocation, latitude, longitude, booking, isMapReady]);
+  }, [userLocation, mapLoaded]);
 
-  const updateRoute = useCallback(async (lat: number, lng: number) => {
-    if (!map.current || !booking?.rides) return;
-
-    const ride = booking.rides;
+  const fetchRoute = async (fromLat: number, fromLng: number, toLat: number, toLng: number) => {
+    if (!map.current) return;
 
     try {
       const response = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${lng},${lat};${ride.drop_lng},${ride.drop_lat}?geometries=geojson&steps=true&annotations=congestion&overview=full&access_token=${mapboxgl.accessToken}`
+        `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${fromLng},${fromLat};${toLng},${toLat}?geometries=geojson&steps=true&annotations=congestion&overview=full&access_token=${mapboxgl.accessToken}`
       );
       const data = await response.json();
 
-      if (data.routes?.[0]) {
-        const route = data.routes[0];
-        const etaMinutes = Math.round(route.duration / 60);
-        setEta(`${etaMinutes} min`);
-        setDistance(`${(route.distance / 1000).toFixed(1)} km`);
-        
-        const arrival = new Date(Date.now() + route.duration * 1000);
-        setArrivalTime(arrival.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      if (!data.routes?.[0]) return;
 
-        const stepsData = route.legs[0].steps.map((step: any) => ({
-          instruction: step.maneuver.instruction,
-          distance: step.distance,
-          duration: step.duration,
-          maneuver: step.maneuver,
-        }));
-        setSteps(stepsData);
+      const route = data.routes[0];
+      const etaMinutes = Math.round(route.duration / 60);
+      setEta(`${etaMinutes} min`);
+      setDistance(`${(route.distance / 1000).toFixed(1)} km`);
+      
+      const arrival = new Date(Date.now() + route.duration * 1000);
+      setArrivalTime(arrival.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
-        const coordinates = route.geometry.coordinates;
-        const congestionData = route.legs[0].annotation?.congestion || [];
+      const stepsData = route.legs[0].steps.map((step: any) => ({
+        instruction: step.maneuver.instruction,
+        distance: step.distance,
+        duration: step.duration,
+        maneuver: step.maneuver,
+      }));
+      setSteps(stepsData);
 
-        // Remove existing layers and sources
-        ['route-line', 'route-glow', 'route-traffic-heavy', 'route-traffic-moderate', 'route-traffic-low'].forEach(layerId => {
-          if (map.current?.getLayer(layerId)) map.current.removeLayer(layerId);
-        });
-        ['route', 'route-traffic-heavy', 'route-traffic-moderate', 'route-traffic-low'].forEach(sourceId => {
-          if (map.current?.getSource(sourceId)) map.current.removeSource(sourceId);
-        });
+      // Speak first instruction on initial load
+      if (stepsData.length > 0 && lastSpokenStep.current === -1) {
+        lastSpokenStep.current = 0;
+        speakInstruction(`Starting navigation. ${stepsData[0].instruction}`);
+      }
 
-        // Add main route source
-        map.current.addSource('route', {
-          type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: {},
-            geometry: route.geometry
-          }
-        });
+      const coordinates = route.geometry.coordinates;
+      const congestionData = route.legs[0].annotation?.congestion || [];
 
-        // Add glow effect
-        map.current.addLayer({
-          id: 'route-glow',
-          type: 'line',
-          source: 'route',
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: { 'line-color': '#4285F4', 'line-width': 16, 'line-opacity': 0.3 }
-        });
+      // Remove existing layers and sources
+      ['route-line', 'route-glow', 'route-traffic-heavy', 'route-traffic-moderate'].forEach(layerId => {
+        if (map.current?.getLayer(layerId)) map.current.removeLayer(layerId);
+      });
+      ['route', 'route-traffic-heavy', 'route-traffic-moderate'].forEach(sourceId => {
+        if (map.current?.getSource(sourceId)) map.current.removeSource(sourceId);
+      });
 
-        // Add main route line
-        map.current.addLayer({
-          id: 'route-line',
-          type: 'line',
-          source: 'route',
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: { 'line-color': '#4285F4', 'line-width': 6 }
-        });
+      // Add main route source
+      map.current.addSource('route', {
+        type: 'geojson',
+        data: { type: 'Feature', properties: {}, geometry: route.geometry }
+      });
 
-        // Add traffic segments
-        const segments: { [key: string]: number[][][] } = { heavy: [], moderate: [], low: [] };
+      // Add glow effect
+      map.current.addLayer({
+        id: 'route-glow',
+        type: 'line',
+        source: 'route',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#4285F4', 'line-width': 16, 'line-opacity': 0.3 }
+      });
 
-        for (let i = 0; i < congestionData.length && i < coordinates.length - 1; i++) {
-          const congestion = congestionData[i];
-          const segment = [coordinates[i], coordinates[i + 1]];
-          if (congestion === 'heavy' || congestion === 'severe') {
-            segments.heavy.push(segment);
-          } else if (congestion === 'moderate') {
-            segments.moderate.push(segment);
-          }
-        }
+      // Add main route line
+      map.current.addLayer({
+        id: 'route-line',
+        type: 'line',
+        source: 'route',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#4285F4', 'line-width': 6 }
+      });
 
-        const addTrafficLayer = (id: string, color: string, segmentCoords: number[][][]) => {
-          if (segmentCoords.length === 0) return;
-          const features = segmentCoords.map(coords => ({
-            type: 'Feature' as const,
-            properties: {},
-            geometry: { type: 'LineString' as const, coordinates: coords }
-          }));
-          map.current?.addSource(id, {
-            type: 'geojson',
-            data: { type: 'FeatureCollection', features }
-          });
-          map.current?.addLayer({
-            id,
-            type: 'line',
-            source: id,
-            layout: { 'line-join': 'round', 'line-cap': 'round' },
-            paint: { 'line-color': color, 'line-width': 6 }
-          });
-        };
+      // Add traffic segments
+      const segments: { [key: string]: number[][][] } = { heavy: [], moderate: [] };
 
-        addTrafficLayer('route-traffic-moderate', '#FFAA00', segments.moderate);
-        addTrafficLayer('route-traffic-heavy', '#FF4444', segments.heavy);
-
-        // Update or create user marker
-        if (userMarker.current) {
-          userMarker.current.setLngLat([lng, lat]);
-        } else {
-          const el = document.createElement('div');
-          el.innerHTML = `
-            <div class="relative">
-              <div class="w-8 h-8 bg-blue-500 border-4 border-white rounded-full shadow-xl z-10 relative flex items-center justify-center">
-                <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[10px] border-b-white -rotate-180"></div>
-              </div>
-              <div class="absolute inset-0 w-8 h-8 bg-blue-500 rounded-full animate-ping opacity-40"></div>
-            </div>
-          `;
-          userMarker.current = new mapboxgl.Marker(el).setLngLat([lng, lat]).addTo(map.current!);
-        }
-
-        // Fit bounds to show full route on first load
-        if (!routeInitialized.current && coordinates.length > 1) {
-          const bounds = coordinates.reduce((bounds: mapboxgl.LngLatBounds, coord: number[]) => {
-            return bounds.extend(coord as [number, number]);
-          }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
-
-          map.current.fitBounds(bounds, { padding: 80, maxZoom: 15 });
-          routeInitialized.current = true;
-        } else if (coordinates.length > 1) {
-          // Update bearing for navigation view
-          const bearing = getBearing(lat, lng, coordinates[1][1], coordinates[1][0]);
-          map.current.easeTo({ center: [lng, lat], bearing, pitch: 60, duration: 500 });
+      for (let i = 0; i < congestionData.length && i < coordinates.length - 1; i++) {
+        const congestion = congestionData[i];
+        const segment = [coordinates[i], coordinates[i + 1]];
+        if (congestion === 'heavy' || congestion === 'severe') {
+          segments.heavy.push(segment);
+        } else if (congestion === 'moderate') {
+          segments.moderate.push(segment);
         }
       }
+
+      const addTrafficLayer = (id: string, color: string, segmentCoords: number[][][]) => {
+        if (segmentCoords.length === 0) return;
+        const features = segmentCoords.map(coords => ({
+          type: 'Feature' as const,
+          properties: {},
+          geometry: { type: 'LineString' as const, coordinates: coords }
+        }));
+        map.current?.addSource(id, {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features }
+        });
+        map.current?.addLayer({
+          id,
+          type: 'line',
+          source: id,
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': color, 'line-width': 6 }
+        });
+      };
+
+      addTrafficLayer('route-traffic-moderate', '#FFAA00', segments.moderate);
+      addTrafficLayer('route-traffic-heavy', '#FF4444', segments.heavy);
+
+      // Update or create user marker
+      if (userMarker.current) {
+        userMarker.current.setLngLat([fromLng, fromLat]);
+      } else {
+        const el = document.createElement('div');
+        el.innerHTML = `
+          <div class="relative">
+            <div class="w-8 h-8 bg-blue-500 border-4 border-white rounded-full shadow-xl z-10 relative flex items-center justify-center">
+              <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[10px] border-b-white -rotate-180"></div>
+            </div>
+            <div class="absolute inset-0 w-8 h-8 bg-blue-500 rounded-full animate-ping opacity-40"></div>
+          </div>
+        `;
+        userMarker.current = new mapboxgl.Marker(el).setLngLat([fromLng, fromLat]).addTo(map.current!);
+      }
+
+      // Fit bounds to show full route on first load
+      if (!routeInitialized.current && coordinates.length > 1) {
+        const bounds = coordinates.reduce((bounds: mapboxgl.LngLatBounds, coord: number[]) => {
+          return bounds.extend(coord as [number, number]);
+        }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
+
+        map.current.fitBounds(bounds, { padding: 80, maxZoom: 15, duration: 1000 });
+        routeInitialized.current = true;
+      } else if (coordinates.length > 1) {
+        // Update bearing for navigation view
+        const bearing = getBearing(fromLat, fromLng, coordinates[1][1], coordinates[1][0]);
+        map.current.easeTo({ center: [fromLng, fromLat], bearing, pitch: 60, duration: 500 });
+      }
     } catch (error) {
-      console.error('Error updating route:', error);
+      console.error('Error fetching route:', error);
     }
-  }, [booking]);
+  };
+
+  // Voice announcements for step changes
+  useEffect(() => {
+    if (steps.length > 0 && currentStep !== lastSpokenStep.current && currentStep < steps.length) {
+      lastSpokenStep.current = currentStep;
+      const step = steps[currentStep];
+      speakInstruction(step.instruction);
+    }
+  }, [currentStep, steps, speakInstruction]);
 
   const getBearing = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
     const dLng = (lng2 - lng1) * Math.PI / 180;
@@ -339,22 +379,31 @@ const NavigationPage = () => {
   };
 
   const recenterMap = () => {
-    const loc = userLocation || (latitude && longitude ? { lat: latitude, lng: longitude } : null);
+    const loc = userLocation || (booking?.rides ? { lat: booking.rides.pickup_lat, lng: booking.rides.pickup_lng } : null);
     if (map.current && loc) {
-      map.current.flyTo({ center: [loc.lng, loc.lat], zoom: 17, pitch: 60 });
+      map.current.flyTo({ center: [loc.lng, loc.lat], zoom: 17, pitch: 60, duration: 500 });
+    }
+  };
+
+  const toggleMute = () => {
+    setMuted(!muted);
+    if (!muted) {
+      speechSynthesis.current.cancel();
+    } else {
+      toast({ title: "Voice navigation enabled", description: "Turn-by-turn directions will be announced" });
     }
   };
 
   const closeNavigation = () => navigate(-1);
+  const openChat = () => navigate(`/chat/${bookingId}`);
 
-  // Check if ride is active (confirmed booking status)
   const isRideActive = booking?.status === 'confirmed';
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <div className="animate-spin w-10 h-10 border-3 border-primary border-t-transparent rounded-full mx-auto mb-4" />
           <p className="text-muted-foreground">Loading navigation...</p>
         </div>
       </div>
@@ -377,22 +426,22 @@ const NavigationPage = () => {
       {/* Top Instruction Box */}
       {steps.length > 0 && steps[currentStep] && (
         <div className="absolute top-4 left-4 right-16 z-40">
-          <div className="bg-blue-600 rounded-xl shadow-xl p-3">
+          <div className="bg-primary rounded-xl shadow-xl p-3">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
                 {getManeuverIcon(steps[currentStep].maneuver)}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-semibold text-base leading-tight line-clamp-2">
+                <p className="text-primary-foreground font-semibold text-base leading-tight line-clamp-2">
                   {steps[currentStep]?.instruction}
                 </p>
-                <p className="text-blue-200 text-sm mt-0.5">
+                <p className="text-primary-foreground/70 text-sm mt-0.5">
                   {formatDistance(steps[currentStep]?.distance)}
                 </p>
               </div>
             </div>
             {steps[currentStep + 1] && (
-              <div className="mt-2 pt-2 border-t border-white/20 flex items-center gap-2 text-blue-200 text-xs">
+              <div className="mt-2 pt-2 border-t border-white/20 flex items-center gap-2 text-primary-foreground/70 text-xs">
                 <Navigation2 className="w-3 h-3" />
                 <span className="truncate">Then: {steps[currentStep + 1]?.instruction}</span>
               </div>
@@ -422,16 +471,31 @@ const NavigationPage = () => {
       {/* Control Buttons */}
       <div className="absolute top-40 right-4 z-40 flex flex-col gap-2">
         <button
-          onClick={() => setMuted(!muted)}
+          onClick={toggleMute}
           className="w-10 h-10 bg-card/90 backdrop-blur rounded-full shadow-lg flex items-center justify-center border border-border"
+          title={muted ? "Unmute voice navigation" : "Mute voice navigation"}
         >
           {muted ? <VolumeX className="w-5 h-5 text-muted-foreground" /> : <Volume2 className="w-5 h-5 text-foreground" />}
         </button>
         <button
           onClick={recenterMap}
-          className="w-10 h-10 bg-blue-500 rounded-full shadow-lg flex items-center justify-center"
+          className="w-10 h-10 bg-primary rounded-full shadow-lg flex items-center justify-center"
         >
-          <Crosshair className="w-5 h-5 text-white" />
+          <Crosshair className="w-5 h-5 text-primary-foreground" />
+        </button>
+        <button
+          onClick={() => setShowShareModal(true)}
+          className="w-10 h-10 bg-green-500 rounded-full shadow-lg flex items-center justify-center"
+          title="Share live location"
+        >
+          <Share2 className="w-5 h-5 text-white" />
+        </button>
+        <button
+          onClick={openChat}
+          className="w-10 h-10 bg-card/90 backdrop-blur rounded-full shadow-lg flex items-center justify-center border border-border"
+          title="Chat with driver/passenger"
+        >
+          <MessageCircle className="w-5 h-5 text-foreground" />
         </button>
       </div>
 
@@ -474,6 +538,16 @@ const NavigationPage = () => {
         </div>
         <p className="text-xs text-muted-foreground mt-2 truncate">To: {destination}</p>
       </div>
+
+      {/* Share Location Modal */}
+      <ShareLocationModal 
+        isOpen={showShareModal} 
+        onClose={() => setShowShareModal(false)}
+        userLocation={userLocation}
+        destination={destination}
+        eta={eta}
+        bookingId={bookingId}
+      />
     </div>
   );
 };
