@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, Users, Car, MapPin, Shield, 
-  Settings, LogOut, X, CarFront, FileCheck
+  Settings, LogOut, X, CarFront, Bell
 } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ const AdminSidebar = ({ isOpen, onClose }: AdminSidebarProps) => {
     { label: "Verify Cars", path: "/admin/verify-cars", icon: CarFront },
     { label: "All Users", path: "/admin/users", icon: Users },
     { label: "All Vehicles", path: "/admin/vehicles", icon: Car },
+    { label: "Notifications", path: "/admin/notifications", icon: Bell },
     { label: "Settings", path: "/admin/settings", icon: Settings },
   ];
 

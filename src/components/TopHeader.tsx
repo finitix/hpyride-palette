@@ -1,7 +1,8 @@
 import { Menu, Bell, Heart, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Sheet,
   SheetContent,
@@ -25,6 +26,38 @@ const TopHeader = () => {
   const [donationOpen, setDonationOpen] = useState(false);
   const [isWatching, setIsWatching] = useState(false);
   const [watchProgress, setWatchProgress] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (user) {
+      fetchUnreadCount();
+      const channel = supabase
+        .channel('notifications-count')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        }, () => {
+          fetchUnreadCount();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user]);
+
+  const fetchUnreadCount = async () => {
+    if (!user) return;
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false);
+    setUnreadCount(count || 0);
+  };
 
   const menuItems = [
     { label: "Home", path: "/home" },
@@ -115,8 +148,16 @@ const TopHeader = () => {
           </div>
           
           <div className="flex items-center gap-2">
-            <button className="p-2 rounded-full hover:bg-splash-fg/10 transition-colors">
+            <button 
+              onClick={() => navigate('/notifications')}
+              className="p-2 rounded-full hover:bg-splash-fg/10 transition-colors relative"
+            >
               <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
             <button
               onClick={() => setDonationOpen(true)}
