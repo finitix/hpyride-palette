@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import AIChatBubble from "@/components/AIChatBubble";
+import SOSButton from "@/components/SOSButton";
 
-mapboxgl.accessToken = "pk.eyJ1IjoiZGFybHoiLCJhIjoiY21pbDVzN3VqMTVncjNlcjQ1MGxsYWhoZyJ9.GOk93pZDh2T5inUnOXYF9A";
+mapboxgl.accessToken = "pk.eyJ1IjoiZGFybHoiLCJhIjoiY21pbDVzN3VqMTVncjNlcjQ1MGxsYWhoZyJ9.GOk93pZDh2T7inUnOXYF9A";
 
 interface Step {
   instruction: string;
@@ -28,6 +29,7 @@ const NavigationPage = () => {
   const map = useRef<mapboxgl.Map | null>(null);
   const userMarker = useRef<mapboxgl.Marker | null>(null);
   const watchIdRef = useRef<number | null>(null);
+  const routeInitialized = useRef(false);
 
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -40,9 +42,29 @@ const NavigationPage = () => {
   const [destination, setDestination] = useState("");
   const [isMapReady, setIsMapReady] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [driverName, setDriverName] = useState("");
+  const [vehicleNumber, setVehicleNumber] = useState("");
 
+  // Fetch booking immediately
+  useEffect(() => {
+    if (bookingId) fetchBooking();
+  }, [bookingId]);
+
+  // Start watching location
   useEffect(() => {
     if ('geolocation' in navigator) {
+      // Get initial position immediately
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        () => requestLocation(),
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+
       watchIdRef.current = navigator.geolocation.watchPosition(
         (position) => {
           setUserLocation({
@@ -50,10 +72,7 @@ const NavigationPage = () => {
             lng: position.coords.longitude
           });
         },
-        (error) => {
-          console.error('Geolocation error:', error);
-          requestLocation();
-        },
+        (error) => console.error('Geolocation error:', error),
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 }
       );
     }
@@ -64,29 +83,29 @@ const NavigationPage = () => {
     };
   }, []);
 
-  useEffect(() => {
-    fetchBooking();
-  }, [bookingId]);
-
-  useEffect(() => {
-    const loc = userLocation || (latitude && longitude ? { lat: latitude, lng: longitude } : null);
-    if (loc && booking && isMapReady) {
-      updateRoute(loc.lat, loc.lng);
-    }
-  }, [userLocation, latitude, longitude, booking, isMapReady]);
-
   const fetchBooking = async () => {
-    if (!bookingId) return;
     try {
       const { data } = await supabase
         .from('bookings')
-        .select(`*, rides (*)`)
+        .select(`*, rides (*, vehicle:vehicles(name, number))`)
         .eq('id', bookingId)
         .single();
 
       setBooking(data);
       if (data?.rides?.drop_location) {
         setDestination(data.rides.drop_location);
+      }
+      if (data?.rides?.vehicle) {
+        setVehicleNumber(data.rides.vehicle.number || '');
+      }
+      // Get driver profile
+      if (data?.driver_id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('user_id', data.driver_id)
+          .single();
+        if (profile?.full_name) setDriverName(profile.full_name);
       }
     } catch (error) {
       console.error('Error fetching booking:', error);
@@ -95,6 +114,7 @@ const NavigationPage = () => {
     }
   };
 
+  // Initialize map when booking is ready
   useEffect(() => {
     if (!mapContainer.current || map.current || !booking?.rides) return;
 
@@ -106,7 +126,7 @@ const NavigationPage = () => {
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/navigation-night-v1",
       center,
-      zoom: 17,
+      zoom: 15,
       pitch: 60,
       bearing: 0,
       attributionControl: false,
@@ -114,6 +134,8 @@ const NavigationPage = () => {
 
     map.current.on('load', () => {
       setIsMapReady(true);
+      
+      // Add destination marker
       const destEl = document.createElement('div');
       destEl.innerHTML = `
         <div class="relative">
@@ -127,13 +149,34 @@ const NavigationPage = () => {
       new mapboxgl.Marker(destEl)
         .setLngLat([ride.drop_lng, ride.drop_lat])
         .addTo(map.current!);
+
+      // Add pickup marker
+      const pickupEl = document.createElement('div');
+      pickupEl.innerHTML = `
+        <div class="w-8 h-8 bg-blue-600 rounded-full border-3 border-white shadow-lg flex items-center justify-center">
+          <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="4"/>
+          </svg>
+        </div>
+      `;
+      new mapboxgl.Marker(pickupEl)
+        .setLngLat([ride.pickup_lng, ride.pickup_lat])
+        .addTo(map.current!);
     });
 
     return () => {
       map.current?.remove();
       map.current = null;
     };
-  }, [booking, latitude, longitude, userLocation]);
+  }, [booking]);
+
+  // Update route when location or map is ready
+  useEffect(() => {
+    const loc = userLocation || (latitude && longitude ? { lat: latitude, lng: longitude } : null);
+    if (loc && booking && isMapReady) {
+      updateRoute(loc.lat, loc.lng);
+    }
+  }, [userLocation, latitude, longitude, booking, isMapReady]);
 
   const updateRoute = useCallback(async (lat: number, lng: number) => {
     if (!map.current || !booking?.rides) return;
@@ -163,38 +206,57 @@ const NavigationPage = () => {
         }));
         setSteps(stepsData);
 
-        const congestionData = route.legs[0].annotation?.congestion || [];
         const coordinates = route.geometry.coordinates;
+        const congestionData = route.legs[0].annotation?.congestion || [];
 
-        ['route-traffic-heavy', 'route-traffic-moderate', 'route-traffic-low', 'route-bg'].forEach(layerId => {
+        // Remove existing layers and sources
+        ['route-line', 'route-glow', 'route-traffic-heavy', 'route-traffic-moderate', 'route-traffic-low'].forEach(layerId => {
           if (map.current?.getLayer(layerId)) map.current.removeLayer(layerId);
         });
-        ['route-traffic-heavy', 'route-traffic-moderate', 'route-traffic-low', 'route'].forEach(sourceId => {
+        ['route', 'route-traffic-heavy', 'route-traffic-moderate', 'route-traffic-low'].forEach(sourceId => {
           if (map.current?.getSource(sourceId)) map.current.removeSource(sourceId);
         });
 
+        // Add main route source
+        map.current.addSource('route', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: route.geometry
+          }
+        });
+
+        // Add glow effect
+        map.current.addLayer({
+          id: 'route-glow',
+          type: 'line',
+          source: 'route',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': '#4285F4', 'line-width': 16, 'line-opacity': 0.3 }
+        });
+
+        // Add main route line
+        map.current.addLayer({
+          id: 'route-line',
+          type: 'line',
+          source: 'route',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': '#4285F4', 'line-width': 6 }
+        });
+
+        // Add traffic segments
         const segments: { [key: string]: number[][][] } = { heavy: [], moderate: [], low: [] };
 
-        for (let i = 0; i < congestionData.length; i++) {
+        for (let i = 0; i < congestionData.length && i < coordinates.length - 1; i++) {
           const congestion = congestionData[i];
           const segment = [coordinates[i], coordinates[i + 1]];
           if (congestion === 'heavy' || congestion === 'severe') {
             segments.heavy.push(segment);
           } else if (congestion === 'moderate') {
             segments.moderate.push(segment);
-          } else {
-            segments.low.push(segment);
           }
         }
-
-        map.current.addSource('route', { type: 'geojson', data: route.geometry });
-        map.current.addLayer({
-          id: 'route-bg',
-          type: 'line',
-          source: 'route',
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: { 'line-color': '#1a1a2e', 'line-width': 14 }
-        });
 
         const addTrafficLayer = (id: string, color: string, segmentCoords: number[][][]) => {
           if (segmentCoords.length === 0) return;
@@ -212,14 +274,14 @@ const NavigationPage = () => {
             type: 'line',
             source: id,
             layout: { 'line-join': 'round', 'line-cap': 'round' },
-            paint: { 'line-color': color, 'line-width': 8 }
+            paint: { 'line-color': color, 'line-width': 6 }
           });
         };
 
-        addTrafficLayer('route-traffic-low', '#00CC66', segments.low);
         addTrafficLayer('route-traffic-moderate', '#FFAA00', segments.moderate);
         addTrafficLayer('route-traffic-heavy', '#FF4444', segments.heavy);
 
+        // Update or create user marker
         if (userMarker.current) {
           userMarker.current.setLngLat([lng, lat]);
         } else {
@@ -232,12 +294,21 @@ const NavigationPage = () => {
               <div class="absolute inset-0 w-8 h-8 bg-blue-500 rounded-full animate-ping opacity-40"></div>
             </div>
           `;
-          userMarker.current = new mapboxgl.Marker(el).setLngLat([lng, lat]).addTo(map.current);
+          userMarker.current = new mapboxgl.Marker(el).setLngLat([lng, lat]).addTo(map.current!);
         }
 
-        if (coordinates.length > 1) {
+        // Fit bounds to show full route on first load
+        if (!routeInitialized.current && coordinates.length > 1) {
+          const bounds = coordinates.reduce((bounds: mapboxgl.LngLatBounds, coord: number[]) => {
+            return bounds.extend(coord as [number, number]);
+          }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
+
+          map.current.fitBounds(bounds, { padding: 80, maxZoom: 15 });
+          routeInitialized.current = true;
+        } else if (coordinates.length > 1) {
+          // Update bearing for navigation view
           const bearing = getBearing(lat, lng, coordinates[1][1], coordinates[1][0]);
-          map.current.easeTo({ center: [lng, lat], bearing, pitch: 60, duration: 1000 });
+          map.current.easeTo({ center: [lng, lat], bearing, pitch: 60, duration: 500 });
         }
       }
     } catch (error) {
@@ -276,6 +347,9 @@ const NavigationPage = () => {
 
   const closeNavigation = () => navigate(-1);
 
+  // Check if ride is active (confirmed booking status)
+  const isRideActive = booking?.status === 'confirmed';
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -289,7 +363,7 @@ const NavigationPage = () => {
 
   return (
     <div className="fixed inset-0 bg-background flex flex-col">
-      {/* Close Button - Top Right */}
+      {/* Close Button */}
       <button
         onClick={closeNavigation}
         className="absolute top-4 right-4 z-50 w-10 h-10 bg-card/90 backdrop-blur rounded-full shadow-lg flex items-center justify-center border border-border"
@@ -331,8 +405,8 @@ const NavigationPage = () => {
       <div className="absolute top-28 left-4 z-40 bg-card/90 backdrop-blur rounded-lg p-2 shadow-lg">
         <div className="flex items-center gap-2 text-xs">
           <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-green-500" />
-            <span className="text-muted-foreground">Clear</span>
+            <div className="w-2 h-2 rounded-full bg-blue-500" />
+            <span className="text-muted-foreground">Route</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-yellow-500" />
@@ -345,7 +419,7 @@ const NavigationPage = () => {
         </div>
       </div>
 
-      {/* Control Buttons - Right Side */}
+      {/* Control Buttons */}
       <div className="absolute top-40 right-4 z-40 flex flex-col gap-2">
         <button
           onClick={() => setMuted(!muted)}
@@ -361,10 +435,18 @@ const NavigationPage = () => {
         </button>
       </div>
 
-      {/* AI Chat Bubble - Bottom Left */}
+      {/* AI Chat Bubble */}
       <div className="absolute bottom-28 left-4 z-40">
         <AIChatBubble context={{ destination, eta, distance }} />
       </div>
+
+      {/* SOS Button - Active during confirmed booking */}
+      <SOSButton 
+        isRideActive={isRideActive}
+        bookingId={bookingId}
+        driverName={driverName}
+        vehicleNumber={vehicleNumber}
+      />
 
       {/* Bottom Panel */}
       <div className="absolute bottom-0 left-0 right-0 z-40 bg-card border-t border-border p-4 pb-6 rounded-t-2xl shadow-xl">
