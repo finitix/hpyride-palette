@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_notifications: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          message: string
+          target_audience: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          message: string
+          target_audience?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          message?: string
+          target_audience?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       admin_users: {
         Row: {
           created_at: string
@@ -466,6 +493,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           email: string | null
+          fcm_token: string | null
           full_name: string | null
           gender: string | null
           id: string
@@ -478,6 +506,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           email?: string | null
+          fcm_token?: string | null
           full_name?: string | null
           gender?: string | null
           id?: string
@@ -490,6 +519,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           email?: string | null
+          fcm_token?: string | null
           full_name?: string | null
           gender?: string | null
           id?: string

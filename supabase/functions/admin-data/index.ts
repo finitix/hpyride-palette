@@ -173,6 +173,15 @@ serve(async (req) => {
           .from('profiles')
           .update({ is_verified: true })
           .eq('user_id', data.user_id);
+
+        // Send notification to user
+        await supabaseAdmin.from('notifications').insert({
+          user_id: data.user_id,
+          title: '✅ Identity Verified!',
+          body: 'Congratulations! Your identity has been verified. You can now access all HpyRide features.',
+          type: 'verification_approved',
+          data: { verification_id: data.id }
+        });
         
         result = { success: true };
         break;
@@ -190,6 +199,16 @@ serve(async (req) => {
           .eq('id', data.id);
         
         if (error) throw error;
+
+        // Send notification to user
+        await supabaseAdmin.from('notifications').insert({
+          user_id: data.user_id,
+          title: '❌ Verification Rejected',
+          body: `Your identity verification was rejected. Reason: ${data.reason || 'No reason provided'}. Please resubmit with valid documents.`,
+          type: 'verification_rejected',
+          data: { verification_id: data.id, reason: data.reason }
+        });
+
         result = { success: true };
         break;
       }
@@ -223,6 +242,13 @@ serve(async (req) => {
       }
 
       case 'approve_ride': {
+        // Get ride details first
+        const { data: rideData } = await supabaseAdmin
+          .from('rides')
+          .select('user_id, pickup_location, drop_location')
+          .eq('id', data.id)
+          .single();
+
         const { error } = await supabaseAdmin
           .from('rides')
           .update({ 
@@ -232,11 +258,30 @@ serve(async (req) => {
           .eq('id', data.id);
         
         if (error) throw error;
+
+        // Send notification to ride owner
+        if (rideData?.user_id) {
+          await supabaseAdmin.from('notifications').insert({
+            user_id: rideData.user_id,
+            title: '🎉 Ride Published!',
+            body: `Your ride from ${rideData.pickup_location} to ${rideData.drop_location} has been verified and published.`,
+            type: 'ride_approved',
+            data: { ride_id: data.id }
+          });
+        }
+
         result = { success: true };
         break;
       }
 
       case 'reject_ride': {
+        // Get ride details first
+        const { data: rideData } = await supabaseAdmin
+          .from('rides')
+          .select('user_id, pickup_location, drop_location')
+          .eq('id', data.id)
+          .single();
+
         const { error } = await supabaseAdmin
           .from('rides')
           .update({ 
@@ -246,6 +291,18 @@ serve(async (req) => {
           .eq('id', data.id);
         
         if (error) throw error;
+
+        // Send notification to ride owner
+        if (rideData?.user_id) {
+          await supabaseAdmin.from('notifications').insert({
+            user_id: rideData.user_id,
+            title: '❌ Ride Rejected',
+            body: `Your ride from ${rideData.pickup_location} to ${rideData.drop_location} was rejected. Reason: ${data.reason || 'No reason provided'}`,
+            type: 'ride_rejected',
+            data: { ride_id: data.id, reason: data.reason }
+          });
+        }
+
         result = { success: true };
         break;
       }
@@ -561,6 +618,89 @@ serve(async (req) => {
         );
         
         result = bookingsWithProfiles;
+        break;
+      }
+
+      case 'confirm_booking': {
+        const { data: bookingData } = await supabaseAdmin
+          .from('bookings')
+          .select('user_id, ride_id, rides(pickup_location, drop_location)')
+          .eq('id', data.id)
+          .single();
+
+        const { error } = await supabaseAdmin
+          .from('bookings')
+          .update({ status: 'confirmed' })
+          .eq('id', data.id);
+        
+        if (error) throw error;
+
+        // Notify passenger
+        if (bookingData?.user_id) {
+          const ride = bookingData.rides as any;
+          await supabaseAdmin.from('notifications').insert({
+            user_id: bookingData.user_id,
+            title: '🎉 Booking Confirmed!',
+            body: `Your booking from ${ride?.pickup_location || 'pickup'} to ${ride?.drop_location || 'destination'} has been confirmed.`,
+            type: 'booking_confirmed',
+            data: { booking_id: data.id, ride_id: bookingData.ride_id }
+          });
+        }
+
+        result = { success: true };
+        break;
+      }
+
+      case 'reject_booking': {
+        const { data: bookingData } = await supabaseAdmin
+          .from('bookings')
+          .select('user_id, ride_id, rides(pickup_location, drop_location)')
+          .eq('id', data.id)
+          .single();
+
+        const { error } = await supabaseAdmin
+          .from('bookings')
+          .update({ status: 'rejected', rejection_reason: data.reason })
+          .eq('id', data.id);
+        
+        if (error) throw error;
+
+        // Notify passenger
+        if (bookingData?.user_id) {
+          const ride = bookingData.rides as any;
+          await supabaseAdmin.from('notifications').insert({
+            user_id: bookingData.user_id,
+            title: '❌ Booking Rejected',
+            body: `Your booking from ${ride?.pickup_location || 'pickup'} to ${ride?.drop_location || 'destination'} was rejected. ${data.reason ? `Reason: ${data.reason}` : ''}`,
+            type: 'booking_rejected',
+            data: { booking_id: data.id, ride_id: bookingData.ride_id, reason: data.reason }
+          });
+        }
+
+        result = { success: true };
+        break;
+      }
+
+      case 'notify_booking_request': {
+        // Send notification to driver about new booking request
+        const { data: bookingData } = await supabaseAdmin
+          .from('bookings')
+          .select('driver_id, passenger_name, seats_booked, rides(pickup_location, drop_location)')
+          .eq('id', data.id)
+          .single();
+
+        if (bookingData?.driver_id) {
+          const ride = bookingData.rides as any;
+          await supabaseAdmin.from('notifications').insert({
+            user_id: bookingData.driver_id,
+            title: '🚗 New Booking Request!',
+            body: `${bookingData.passenger_name} wants to book ${bookingData.seats_booked} seat(s) for your ride from ${ride?.pickup_location || 'pickup'} to ${ride?.drop_location || 'destination'}.`,
+            type: 'booking_request',
+            data: { booking_id: data.id }
+          });
+        }
+
+        result = { success: true };
         break;
       }
 
