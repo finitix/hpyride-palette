@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu, User, Mail, Phone, Shield, ShieldCheck, ShieldX } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import { useAdminApi } from "@/hooks/useAdminApi";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import { toast } from "sonner";
 
 interface UserProfile {
   id: string;
@@ -13,14 +14,13 @@ interface UserProfile {
   phone: string;
   is_verified: boolean;
   created_at: string;
-  verification?: {
-    status: string;
-  };
+  verification_status?: string;
 }
 
 const AdminUsersPage = () => {
   const navigate = useNavigate();
   const { admin } = useAdminAuth();
+  const { callAdminApi } = useAdminApi();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,23 +36,12 @@ const AdminUsersPage = () => {
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
-      const usersWithVerification = await Promise.all(
-        data.map(async (user) => {
-          const { data: verification } = await supabase
-            .from('user_verifications')
-            .select('status')
-            .eq('user_id', user.user_id)
-            .single();
-          return { ...user, verification };
-        })
-      );
-      setUsers(usersWithVerification as UserProfile[]);
+    try {
+      const data = await callAdminApi('get_users');
+      setUsers(data || []);
+    } catch (error: any) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to fetch users');
     }
     setLoading(false);
   };
@@ -99,11 +88,11 @@ const AdminUsersPage = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <p className="font-semibold text-foreground">{user.full_name || "No name"}</p>
-                        {user.verification?.status === 'verified' ? (
+                        {user.verification_status === 'verified' ? (
                           <ShieldCheck className="w-4 h-4 text-green-500" />
-                        ) : user.verification?.status === 'pending' ? (
+                        ) : user.verification_status === 'pending' ? (
                           <Shield className="w-4 h-4 text-yellow-500" />
-                        ) : user.verification?.status === 'rejected' ? (
+                        ) : user.verification_status === 'rejected' ? (
                           <ShieldX className="w-4 h-4 text-red-500" />
                         ) : null}
                       </div>

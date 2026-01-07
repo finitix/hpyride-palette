@@ -15,6 +15,14 @@ serve(async (req) => {
   try {
     const { action, adminEmail, adminPassword, data } = await req.json();
     
+    // Validate required fields
+    if (!adminEmail || !adminPassword) {
+      return new Response(
+        JSON.stringify({ error: 'Missing credentials' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Create admin client with service role
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -22,23 +30,29 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Verify admin credentials
-    const { data: adminUser, error: adminError } = await supabaseAdmin
-      .from('admin_users')
-      .select('*')
-      .eq('email', adminEmail)
-      .eq('password_hash', adminPassword)
-      .eq('is_active', true)
-      .single();
+    // Verify admin credentials using secure database function
+    const { data: adminResult, error: adminError } = await supabaseAdmin
+      .rpc('verify_admin_password', {
+        _email: adminEmail,
+        _password: adminPassword
+      });
 
-    if (adminError || !adminUser) {
-      console.log('Admin auth failed:', adminError);
+    if (adminError) {
+      console.error('Admin verification error:', adminError);
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Authentication failed' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    if (!adminResult || adminResult.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid credentials' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const adminUser = adminResult[0];
     console.log('Admin authenticated:', adminUser.email, 'Action:', action);
 
     let result;
@@ -304,6 +318,30 @@ serve(async (req) => {
           pendingRides: pendingRides.count || 0,
           pendingCars: pendingCars.count || 0,
         };
+        break;
+      }
+
+      case 'get_users': {
+        const { data: profiles, error } = await supabaseAdmin
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+
+        // Get verification status for each user
+        const usersWithVerification = await Promise.all(
+          (profiles || []).map(async (p: any) => {
+            const { data: verification } = await supabaseAdmin
+              .from('user_verifications')
+              .select('status')
+              .eq('user_id', p.user_id)
+              .single();
+            return { ...p, verification_status: verification?.status || null };
+          })
+        );
+        
+        result = usersWithVerification;
         break;
       }
 
