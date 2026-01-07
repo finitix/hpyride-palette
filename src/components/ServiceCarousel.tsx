@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, Calendar, Users, Search } from "lucide-react";
+import { MapPin, Calendar, Users, Search, Clock } from "lucide-react";
+import ComingSoonModal from "@/components/ComingSoonModal";
 
 interface ServiceCard {
   id: string;
@@ -14,6 +15,7 @@ interface ServiceCard {
   }[];
   buttonText: string;
   path: string;
+  comingSoon?: boolean;
 }
 
 const serviceCards: ServiceCard[] = [
@@ -27,6 +29,7 @@ const serviceCards: ServiceCard[] = [
     ],
     buttonText: "Search Ride",
     path: "/ride-sharing",
+    comingSoon: false,
   },
   {
     id: "car-rental",
@@ -36,8 +39,9 @@ const serviceCards: ServiceCard[] = [
       { icon: Calendar, placeholder: "Start date", type: "date" },
       { icon: Calendar, placeholder: "End date", type: "date" },
     ],
-    buttonText: "Search Cars",
+    buttonText: "Coming Soon",
     path: "/car-rentals",
+    comingSoon: true,
   },
   {
     id: "driver-pool",
@@ -47,8 +51,9 @@ const serviceCards: ServiceCard[] = [
       { icon: MapPin, placeholder: "To", type: "text" },
       { icon: Calendar, placeholder: "Date", type: "date" },
     ],
-    buttonText: "Search Drivers",
+    buttonText: "Coming Soon",
     path: "/driver-pool",
+    comingSoon: true,
   },
 ];
 
@@ -56,6 +61,7 @@ const ServiceCarousel = () => {
   const navigate = useNavigate();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [comingSoonOpen, setComingSoonOpen] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -71,6 +77,14 @@ const ServiceCarousel = () => {
 
   const currentCard = serviceCards[currentIndex];
 
+  const handleButtonClick = () => {
+    if (currentCard.comingSoon) {
+      setComingSoonOpen(true);
+    } else {
+      navigate(currentCard.path);
+    }
+  };
+
   return (
     <div className="relative">
       {/* Black background section */}
@@ -80,9 +94,19 @@ const ServiceCarousel = () => {
             isTransitioning ? "opacity-0" : "opacity-100"
           }`}
         >
-          <h2 className="text-2xl font-bold mb-2">{currentCard.title}</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-bold mb-2">{currentCard.title}</h2>
+            {currentCard.comingSoon && (
+              <span className="px-2 py-0.5 bg-splash-fg/20 text-splash-fg text-[10px] font-bold rounded-full mb-2">
+                COMING SOON
+              </span>
+            )}
+          </div>
           <p className="text-splash-fg/70 text-sm">
-            Find the best {currentCard.title.toLowerCase()} options
+            {currentCard.comingSoon 
+              ? `${currentCard.title} is launching soon!`
+              : `Find the best ${currentCard.title.toLowerCase()} options`
+            }
           </p>
         </div>
       </div>
@@ -104,6 +128,7 @@ const ServiceCarousel = () => {
                     type={field.type}
                     placeholder={field.placeholder}
                     className="pl-12"
+                    disabled={currentCard.comingSoon}
                   />
                 </div>
               );
@@ -111,15 +136,51 @@ const ServiceCarousel = () => {
           </div>
 
           <Button
-            variant="hero"
+            variant={currentCard.comingSoon ? "secondary" : "hero"}
             className="w-full mt-6"
-            onClick={() => navigate(currentCard.path)}
+            onClick={handleButtonClick}
           >
-            <Search className="w-4 h-4 mr-2" />
-            {currentCard.buttonText}
+            {currentCard.comingSoon ? (
+              <>
+                <Clock className="w-4 h-4 mr-2" />
+                {currentCard.buttonText}
+              </>
+            ) : (
+              <>
+                <Search className="w-4 h-4 mr-2" />
+                {currentCard.buttonText}
+              </>
+            )}
           </Button>
         </div>
       </div>
+
+      {/* Carousel indicators */}
+      <div className="absolute top-4 right-6 flex gap-1.5">
+        {serviceCards.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => {
+              setIsTransitioning(true);
+              setTimeout(() => {
+                setCurrentIndex(index);
+                setIsTransitioning(false);
+              }, 300);
+            }}
+            className={`w-2 h-2 rounded-full transition-all ${
+              index === currentIndex 
+                ? "bg-splash-fg w-6" 
+                : "bg-splash-fg/40"
+            }`}
+          />
+        ))}
+      </div>
+
+      <ComingSoonModal
+        isOpen={comingSoonOpen}
+        onClose={() => setComingSoonOpen(false)}
+        serviceName={currentCard.title}
+      />
     </div>
   );
 };
