@@ -5,6 +5,8 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { ArrowLeft, Search, Plus, Navigation, Car, Bike, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BottomNavigation from "@/components/BottomNavigation";
+import SafetyForWomenCard from "@/components/SafetyForWomenCard";
+import VerifiedPoolerBadge from "@/components/VerifiedPoolerBadge";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -166,8 +168,9 @@ const RideSharingPage = () => {
         </button>
       </header>
 
-      {/* Search Bar */}
-      <div className="px-4 py-3 bg-background border-b border-border">
+      {/* Safety for Women + Search Bar */}
+      <div className="px-4 py-3 bg-background border-b border-border space-y-3">
+        <SafetyForWomenCard />
         <button
           onClick={() => navigate("/book-ride")}
           className="w-full flex items-center gap-3 bg-muted rounded-xl px-4 py-3"
@@ -207,7 +210,10 @@ const RideSharingPage = () => {
                 )}
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-foreground">{selectedRide.vehicles?.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-foreground">{selectedRide.vehicles?.name}</p>
+                  <VerifiedPoolerBadge isVerified={true} rating={4.8} totalRides={125} size="sm" />
+                </div>
                 <p className="text-sm text-muted-foreground">{selectedRide.vehicles?.number}</p>
               </div>
               <div className="text-right">
