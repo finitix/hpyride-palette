@@ -807,6 +807,16 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_user_verified: { Args: { _user_id: string }; Returns: boolean }
+      verify_admin_password: {
+        Args: { _email: string; _password: string }
+        Returns: {
+          email: string
+          id: string
+          is_active: boolean
+          name: string
+          role: string
+        }[]
+      }
     }
     Enums: {
       app_role: "super_admin" | "admin" | "moderator"
