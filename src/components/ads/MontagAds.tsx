@@ -1,38 +1,42 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 
-// Monetag script URL
-const MONETAG_URL = "https://otieu.com/4/10447754";
+// Monetag Zone ID from URL
+const MONETAG_ZONE_ID = "10447754";
 
-// Banner Ad Component
+// Banner Ad Component - Uses Monetag's native ad script
 export const BannerAd = ({ className = "" }: { className?: string }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scriptLoaded = useRef(false);
+
   useEffect(() => {
-    // Load Monetag banner script
+    if (scriptLoaded.current || !containerRef.current) return;
+    scriptLoaded.current = true;
+
+    // Create the Monetag banner script
     const script = document.createElement("script");
-    script.src = MONETAG_URL;
     script.async = true;
-    script.dataset.cfasync = "false";
+    script.setAttribute("data-cfasync", "false");
+    script.src = `//pl26040810.effectiveperformanceformat.com/adScript.js?zoneid=${MONETAG_ZONE_ID}`;
     
-    const container = document.getElementById("monetag-banner");
-    if (container) {
-      container.appendChild(script);
-    }
+    containerRef.current.appendChild(script);
 
     return () => {
-      if (container && script.parentNode === container) {
-        container.removeChild(script);
+      if (containerRef.current && script.parentNode === containerRef.current) {
+        containerRef.current.removeChild(script);
       }
     };
   }, []);
 
   return (
     <div 
-      id="monetag-banner" 
-      className={`w-full min-h-[50px] bg-muted/30 rounded-lg flex items-center justify-center overflow-hidden ${className}`}
+      ref={containerRef}
+      className={`w-full min-h-[50px] bg-gradient-to-r from-muted/50 to-muted/30 rounded-lg flex items-center justify-center overflow-hidden ${className}`}
     >
-      <span className="text-xs text-muted-foreground">Ad</span>
+      {/* Fallback text shown while ad loads */}
+      <div className="text-xs text-muted-foreground animate-pulse">Loading ad...</div>
     </div>
   );
 };
@@ -49,24 +53,27 @@ export const FullscreenAd = ({ isOpen, onClose, onComplete, type }: FullscreenAd
   const [progress, setProgress] = useState(0);
   const [canClose, setCanClose] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
+  const adContainerRef = useRef<HTMLDivElement>(null);
+  const scriptLoaded = useRef(false);
 
   useEffect(() => {
     if (!isOpen) {
       setProgress(0);
       setCanClose(false);
       setTimeLeft(30);
+      scriptLoaded.current = false;
       return;
     }
 
-    // Load Monetag script for fullscreen
-    const script = document.createElement("script");
-    script.src = MONETAG_URL;
-    script.async = true;
-    script.dataset.cfasync = "false";
-    
-    const container = document.getElementById("monetag-fullscreen");
-    if (container) {
-      container.appendChild(script);
+    // Load Monetag interstitial ad
+    if (adContainerRef.current && !scriptLoaded.current) {
+      scriptLoaded.current = true;
+      
+      const script = document.createElement("script");
+      script.async = true;
+      script.setAttribute("data-cfasync", "false");
+      script.src = `//pl26040810.effectiveperformanceformat.com/adScript.js?zoneid=${MONETAG_ZONE_ID}`;
+      adContainerRef.current.appendChild(script);
     }
 
     // 30-second timer
@@ -88,9 +95,6 @@ export const FullscreenAd = ({ isOpen, onClose, onComplete, type }: FullscreenAd
 
     return () => {
       clearInterval(interval);
-      if (container && script.parentNode === container) {
-        container.removeChild(script);
-      }
     };
   }, [isOpen]);
 
@@ -109,7 +113,7 @@ export const FullscreenAd = ({ isOpen, onClose, onComplete, type }: FullscreenAd
       <div className="flex items-center justify-between p-4 bg-black/80">
         <div className="flex items-center gap-3">
           <span className="text-white text-sm font-medium">
-            {type === "earn" ? "Watch & Earn" : "Free Donation"}
+            {type === "earn" ? "Watch & Earn ₹0.50" : "Free Donation ₹1"}
           </span>
           <span className="px-2 py-0.5 bg-white/20 rounded text-xs text-white">
             {timeLeft}s
@@ -120,7 +124,7 @@ export const FullscreenAd = ({ isOpen, onClose, onComplete, type }: FullscreenAd
           size="sm"
           onClick={handleClose}
           disabled={!canClose}
-          className={`text-white ${!canClose ? "opacity-50" : ""}`}
+          className={`text-white ${!canClose ? "opacity-50 cursor-not-allowed" : ""}`}
         >
           <X className="w-5 h-5" />
         </Button>
@@ -131,19 +135,30 @@ export const FullscreenAd = ({ isOpen, onClose, onComplete, type }: FullscreenAd
 
       {/* Ad content */}
       <div 
-        id="monetag-fullscreen" 
-        className="flex-1 flex items-center justify-center bg-gradient-to-b from-gray-900 to-black"
+        ref={adContainerRef}
+        className="flex-1 flex flex-col items-center justify-center bg-gradient-to-b from-gray-900 to-black p-4 overflow-hidden"
       >
-        <div className="text-center text-white p-4">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/10 flex items-center justify-center animate-pulse">
-            <span className="text-3xl">📺</span>
+        <div className="text-center text-white mb-4">
+          <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-xl animate-pulse">
+            <span className="text-5xl">{type === "earn" ? "💰" : "❤️"}</span>
           </div>
-          <p className="text-lg font-medium mb-2">
-            {type === "earn" ? "Earn ₹0.50" : "Donate ₹1 for FREE"}
+          <p className="text-xl font-bold mb-2">
+            {type === "earn" ? "Earning ₹0.50" : "Donating ₹1"}
           </p>
-          <p className="text-sm text-white/60">
-            Watch for {timeLeft} more seconds
+          <p className="text-sm text-white/60 mb-4">
+            {canClose ? "Ad complete! Tap below to continue" : `Please wait ${timeLeft} seconds`}
           </p>
+          
+          {/* Loading animation */}
+          <div className="flex items-center justify-center gap-1 mb-4">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="w-2 h-2 bg-white/60 rounded-full animate-bounce"
+                style={{ animationDelay: `${i * 0.15}s` }}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
@@ -152,9 +167,9 @@ export const FullscreenAd = ({ isOpen, onClose, onComplete, type }: FullscreenAd
         <div className="p-4 bg-black">
           <Button
             onClick={handleClose}
-            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white"
+            className="w-full h-14 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-lg font-bold rounded-2xl"
           >
-            {type === "earn" ? "Collect ₹0.50" : "Complete Donation"}
+            {type === "earn" ? "🎉 Collect ₹0.50" : "💚 Complete Donation"}
           </Button>
         </div>
       )}
@@ -166,11 +181,45 @@ export const FullscreenAd = ({ isOpen, onClose, onComplete, type }: FullscreenAd
 export const InlineBannerAd = ({ className = "" }: { className?: string }) => {
   return (
     <div className={`w-full py-2 ${className}`}>
-      <div className="bg-gradient-to-r from-muted/50 via-muted/30 to-muted/50 rounded-lg p-3 flex items-center justify-center min-h-[60px]">
-        <BannerAd />
+      <BannerAd />
+    </div>
+  );
+};
+
+// Ride list ad component (shown between rides)
+export const RideListAd = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scriptLoaded = useRef(false);
+
+  useEffect(() => {
+    if (scriptLoaded.current || !containerRef.current) return;
+    scriptLoaded.current = true;
+
+    const script = document.createElement("script");
+    script.async = true;
+    script.setAttribute("data-cfasync", "false");
+    script.src = `//pl26040810.effectiveperformanceformat.com/adScript.js?zoneid=${MONETAG_ZONE_ID}`;
+    
+    containerRef.current.appendChild(script);
+
+    return () => {
+      if (containerRef.current && script.parentNode === containerRef.current) {
+        containerRef.current.removeChild(script);
+      }
+    };
+  }, []);
+
+  return (
+    <div 
+      ref={containerRef}
+      className="w-full bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 rounded-xl p-4 border border-primary/20 min-h-[80px] flex items-center justify-center"
+    >
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span className="animate-pulse">📢</span>
+        <span>Sponsored</span>
       </div>
     </div>
   );
 };
 
-export default { BannerAd, FullscreenAd, InlineBannerAd };
+export default { BannerAd, FullscreenAd, InlineBannerAd, RideListAd };
