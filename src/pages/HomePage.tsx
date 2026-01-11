@@ -37,8 +37,8 @@ const HomePage = () => {
         <InlineBannerAd />
       </div>
       
-      {/* Spacer for the floating card - minimal 15px */}
-      <div className="h-[15px]" />
+      {/* Spacer for the floating card - 50px */}
+      <div className="h-[50px]" />
       
       {/* Our Services 2x2 Grid */}
       <OurServices />
