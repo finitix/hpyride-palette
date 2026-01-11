@@ -4,6 +4,7 @@ import { ArrowLeft, Filter, Calendar, Car, Bike, Clock, MapPin, Star, Users } fr
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import BottomNavigation from "@/components/BottomNavigation";
+import { RideListAd } from "@/components/ads/MontagAds";
 
 interface Ride {
   id: string;
@@ -275,56 +276,63 @@ const AvailableRidesPage = () => {
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">{filteredRides.length} rides found</p>
-            {filteredRides.map((ride) => (
-              <div
-                key={ride.id}
-                onClick={() => navigate(`/booking/${ride.id}`)}
-                className="bg-card border border-border rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
-                      {ride.vehicles && getVehicleIcon(ride.vehicles.category)}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground">{ride.driver_name}</p>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-                        <span>4.8</span>
-                        <span className="mx-1">•</span>
-                        <span>{ride.vehicles?.name}</span>
+            {filteredRides.map((ride, index) => (
+              <div key={ride.id}>
+                {/* Show ad after every 3 rides */}
+                {index > 0 && index % 3 === 0 && (
+                  <div className="mb-4">
+                    <RideListAd />
+                  </div>
+                )}
+                <div
+                  onClick={() => navigate(`/booking/${ride.id}`)}
+                  className="bg-card border border-border rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                        {ride.vehicles && getVehicleIcon(ride.vehicles.category)}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground">{ride.driver_name}</p>
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
+                          <span>4.8</span>
+                          <span className="mx-1">•</span>
+                          <span>{ride.vehicles?.name}</span>
+                        </div>
                       </div>
                     </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-foreground">₹{ride.total_price?.toFixed(0)}</p>
+                      <p className="text-xs text-muted-foreground">{ride.seats_available} seats</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-foreground">₹{ride.total_price?.toFixed(0)}</p>
-                    <p className="text-xs text-muted-foreground">{ride.seats_available} seats</p>
-                  </div>
-                </div>
 
-                <div className="space-y-2 mb-3">
-                  <div className="flex items-start gap-2">
-                    <div className="w-2 h-2 rounded-full bg-green-500 mt-1.5" />
-                    <p className="text-sm text-foreground line-clamp-1">{ride.pickup_location}</p>
+                  <div className="space-y-2 mb-3">
+                    <div className="flex items-start gap-2">
+                      <div className="w-2 h-2 rounded-full bg-green-500 mt-1.5" />
+                      <p className="text-sm text-foreground line-clamp-1">{ride.pickup_location}</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <div className="w-2 h-2 rounded-full bg-orange-500 mt-1.5" />
+                      <p className="text-sm text-foreground line-clamp-1">{ride.drop_location}</p>
+                    </div>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <div className="w-2 h-2 rounded-full bg-orange-500 mt-1.5" />
-                    <p className="text-sm text-foreground line-clamp-1">{ride.drop_location}</p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    <span>{new Date(ride.ride_date).toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" />
-                    <span>{ride.ride_time}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Users className="w-4 h-4" />
-                    <span>{ride.seats_available} left</span>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      <span>{new Date(ride.ride_date).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      <span>{ride.ride_time}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Users className="w-4 h-4" />
+                      <span>{ride.seats_available} left</span>
+                    </div>
                   </div>
                 </div>
               </div>
