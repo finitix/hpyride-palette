@@ -32,13 +32,8 @@ const HomePage = () => {
       {/* Service Carousel with floating card */}
       <ServiceCarousel />
       
-      {/* Banner Ad between carousel and services */}
-      <div className="px-4 mt-4">
-        <InlineBannerAd />
-      </div>
-      
-      {/* Spacer for the floating card - 50px */}
-      <div className="h-[50px]" />
+      {/* Spacer for the floating card - 60px */}
+      <div className="h-[60px]" />
       
       {/* Our Services 2x2 Grid */}
       <OurServices />
