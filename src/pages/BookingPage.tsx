@@ -147,7 +147,7 @@ const BookingPage = () => {
 
     setSubmitting(true);
     try {
-      const { error } = await supabase
+      const { data: bookingData, error } = await supabase
         .from('bookings')
         .insert({
           ride_id: ride.id,
@@ -167,9 +167,20 @@ const BookingPage = () => {
           total_fare: totalFare,
           payment_method: paymentMethod,
           status: 'pending',
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Send notification to driver about new booking request
+      await supabase.from('notifications').insert({
+        user_id: ride.user_id,
+        title: '🚗 New Booking Request!',
+        body: `${passengerName} wants to book ${seats} seat(s) for your ride from ${ride.pickup_location} to ${ride.drop_location}.`,
+        type: 'booking_request',
+        data: { booking_id: bookingData?.id, ride_id: ride.id }
+      });
 
       setShowSuccess(true);
       setTimeout(() => {

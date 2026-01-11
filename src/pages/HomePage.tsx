@@ -38,7 +38,7 @@ const HomePage = () => {
       </div>
       
       {/* Spacer for the floating card */}
-      <div className="h-48" />
+      <div className="h-40" />
       
       {/* Our Services 2x2 Grid */}
       <OurServices />

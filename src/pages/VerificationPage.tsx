@@ -146,8 +146,39 @@ const VerificationPage = () => {
   };
 
   const handleSubmit = async () => {
-    if (!user || !formData.fullName || !formData.dateOfBirth || !formData.idType || !idFront || !idBack || !selfieVideo) {
-      toast.error("Please fill all fields and upload all documents");
+    // Validate all mandatory fields
+    if (!user) {
+      toast.error("Please sign in to verify your identity");
+      return;
+    }
+    
+    if (!formData.fullName.trim()) {
+      toast.error("Full name is required");
+      return;
+    }
+    
+    if (!formData.dateOfBirth) {
+      toast.error("Date of birth is required");
+      return;
+    }
+    
+    if (!formData.idType) {
+      toast.error("Please select an ID type");
+      return;
+    }
+    
+    if (!idFront) {
+      toast.error("Please upload ID front side");
+      return;
+    }
+    
+    if (!idBack) {
+      toast.error("Please upload ID back side");
+      return;
+    }
+    
+    if (!selfieVideo) {
+      toast.error("Please record a selfie video");
       return;
     }
 
@@ -193,6 +224,15 @@ const VerificationPage = () => {
 
         if (error) throw error;
       }
+
+      // Send notification about verification submission
+      await supabase.from('notifications').insert({
+        user_id: user.id,
+        title: '📋 Verification Submitted',
+        body: 'Your identity verification has been submitted for review. You will be notified once it is verified.',
+        type: 'verification_submitted',
+        data: {}
+      });
 
       toast.success("Verification submitted successfully!");
       navigate("/profile");
