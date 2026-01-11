@@ -116,6 +116,8 @@ const NotificationsPage = () => {
     switch (type) {
       case 'ride_published':
       case 'ride_rejected':
+      case 'ride_posted':
+      case 'ride_approved':
         return <Car className="w-5 h-5" />;
       case 'booking_request':
       case 'booking_confirmed':
@@ -123,6 +125,9 @@ const NotificationsPage = () => {
         return <MapPin className="w-5 h-5" />;
       case 'user_verified':
       case 'user_rejected':
+      case 'verification_submitted':
+      case 'verification_approved':
+      case 'verification_rejected':
         return <Shield className="w-5 h-5" />;
       case 'admin_notification':
         return <Megaphone className="w-5 h-5" />;
@@ -133,8 +138,8 @@ const NotificationsPage = () => {
 
   const getNotificationColor = (type: string) => {
     if (type.includes('rejected')) return 'bg-red-500/20 text-red-500';
-    if (type.includes('confirmed') || type.includes('verified') || type.includes('published')) return 'bg-green-500/20 text-green-500';
-    if (type.includes('request')) return 'bg-yellow-500/20 text-yellow-500';
+    if (type.includes('confirmed') || type.includes('verified') || type.includes('published') || type.includes('approved')) return 'bg-green-500/20 text-green-500';
+    if (type.includes('request') || type.includes('posted') || type.includes('submitted')) return 'bg-yellow-500/20 text-yellow-500';
     return 'bg-blue-500/20 text-blue-500';
   };
 

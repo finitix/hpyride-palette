@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { ArrowLeft, Check, Car, Bike, ChevronRight, Upload, X, CheckCircle, Clock } from "lucide-react";
+import { ArrowLeft, Check, Car, Bike, ChevronRight, Upload, X, CheckCircle, Clock, Navigation, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,6 +94,7 @@ const PostRidePage = () => {
   const [femaleOnly, setFemaleOnly] = useState(false);
   const [luggageAllowed, setLuggageAllowed] = useState(true);
   const [pickupFlexibility, setPickupFlexibility] = useState("exact");
+  const [confirmTerms, setConfirmTerms] = useState(false);
 
   useEffect(() => {
     requestLocation();
@@ -333,7 +334,7 @@ const PostRidePage = () => {
 
       const totalPrice = distance * pricePerKm;
 
-      const { error: rideError } = await supabase
+      const { data: rideData, error: rideError } = await supabase
         .from('rides')
         .insert({
           user_id: user.id,
@@ -360,9 +361,20 @@ const PostRidePage = () => {
           pickup_flexibility: pickupFlexibility,
           status: 'pending',
           verification_status: 'pending',
-        });
+        })
+        .select()
+        .single();
 
       if (rideError) throw rideError;
+
+      // Send notification to user about ride submission
+      await supabase.from('notifications').insert({
+        user_id: user.id,
+        title: '🎉 Ride Posted Successfully!',
+        body: `Your ride from ${pickupLocation} to ${dropLocation} has been submitted for verification. You'll be notified once it's published.`,
+        type: 'ride_posted',
+        data: { ride_id: rideData?.id }
+      });
 
       setShowSuccess(true);
       setTimeout(() => {
@@ -424,9 +436,9 @@ const PostRidePage = () => {
           <div className="w-20 h-20 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-6 animate-scale-in">
             <Clock className="w-10 h-10 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">Ride Submitted!</h2>
-          <p className="text-muted-foreground mb-2">Your ride is pending admin approval</p>
-          <p className="text-sm text-muted-foreground mt-4">You'll be notified once it's published</p>
+          <h2 className="text-2xl font-bold text-foreground mb-2">🎉 Congratulations!</h2>
+          <p className="text-muted-foreground mb-2">Your ride has been posted successfully!</p>
+          <p className="text-sm text-muted-foreground mt-4">Wait for admin to verify and publish your ride. You'll be notified once it's live.</p>
         </div>
       </div>
     );
@@ -456,12 +468,30 @@ const PostRidePage = () => {
             <div ref={mapContainer} className="h-48 rounded-xl overflow-hidden" />
             
             <div className="bg-card border border-border rounded-xl p-4 space-y-4">
-              <LocationInput
-                placeholder="Pickup Location"
-                value={pickupLocation}
-                onChange={handlePickupChange}
-                iconColor="green"
-              />
+              <div className="relative">
+                <LocationInput
+                  placeholder="Pickup Location"
+                  value={pickupLocation}
+                  onChange={handlePickupChange}
+                  iconColor="green"
+                  onUseMyLocation={async () => {
+                    await requestLocation();
+                    if (latitude && longitude) {
+                      try {
+                        const response = await fetch(
+                          `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${mapboxgl.accessToken}`
+                        );
+                        const data = await response.json();
+                        if (data.features?.[0]) {
+                          handlePickupChange(data.features[0].place_name, [longitude, latitude]);
+                        }
+                      } catch (error) {
+                        console.error("Error geocoding:", error);
+                      }
+                    }
+                  }}
+                />
+              </div>
               <LocationInput
                 placeholder="Drop Location"
                 value={dropLocation}
@@ -697,11 +727,26 @@ const PostRidePage = () => {
               </div>
             </div>
 
+            {/* Validation message for vehicle selection */}
+            {existingVehicles.length === 0 && !vehicleName && (
+              <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-yellow-600" />
+                <span className="text-sm text-yellow-700">Please add a new vehicle to continue</span>
+              </div>
+            )}
+            
+            {existingVehicles.length > 0 && !selectedVehicleId && !vehicleName && (
+              <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-yellow-600" />
+                <span className="text-sm text-yellow-700">Select a verified vehicle or add a new one</span>
+              </div>
+            )}
+
             <Button
               variant="hero"
               className="w-full"
               onClick={() => setStep(3)}
-              disabled={!selectedVehicleId && (!vehicleName || !vehicleNumber)}
+              disabled={!selectedVehicleId && (!vehicleName || !vehicleNumber || !rcBookFile || !insuranceFile || !frontImage || !rearImage)}
             >
               Continue
               <ChevronRight className="w-4 h-4 ml-2" />
@@ -891,11 +936,24 @@ const PostRidePage = () => {
               <p className="text-sm text-muted-foreground">{dropLocation}</p>
             </div>
 
+            {/* Terms checkbox */}
+            <label className="flex items-start gap-3 p-4 bg-card border border-border rounded-xl">
+              <input
+                type="checkbox"
+                checked={confirmTerms}
+                onChange={(e) => setConfirmTerms(e.target.checked)}
+                className="mt-1"
+              />
+              <span className="text-sm text-muted-foreground">
+                I confirm that all ride details are accurate and I agree to the HpyRide terms and conditions.
+              </span>
+            </label>
+
             <Button
               variant="hero"
               className="w-full"
               onClick={handleSubmit}
-              disabled={submitting}
+              disabled={submitting || !confirmTerms}
             >
               {submitting ? (
                 <span className="flex items-center gap-2">
