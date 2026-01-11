@@ -32,8 +32,8 @@ const HomePage = () => {
       {/* Service Carousel with floating card */}
       <ServiceCarousel />
       
-      {/* Spacer for the floating card - 60px */}
-      <div className="h-[60px]" />
+      {/* Spacer for the floating card - 150px */}
+      <div className="h-[150px]" />
       
       {/* Our Services 2x2 Grid */}
       <OurServices />
