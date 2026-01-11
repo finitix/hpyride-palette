@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { MapPin, Navigation, Check, Car, Phone, MessageCircle, AlertTriangle } from 'lucide-react';
+import { MapPin, Navigation, Check, Car, Phone, MessageCircle, AlertTriangle, Map } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRideTracking } from '@/hooks/useRideTracking';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import LiveTrackingMap from './LiveTrackingMap';
 
 interface RideStatusTrackerProps {
   bookingId: string;
@@ -211,15 +212,30 @@ const RideStatusTracker = ({
         </div>
       </div>
 
-      {/* Driver Location Display (for riders) */}
-      {!isDriver && driverLocation && currentStatus === 'trip_started' && (
-        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-          <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-            <Navigation className="w-4 h-4 animate-pulse" />
-            <span className="text-sm font-medium">Driver is on the way</span>
+      {/* Live Map with Driver Location (for riders) */}
+      {!isDriver && driverLocation && (currentStatus === 'driver_on_way' || currentStatus === 'trip_started') && (
+        <div className="mb-4">
+          <div className="flex items-center gap-2 text-primary mb-2">
+            <Map className="w-4 h-4" />
+            <span className="text-sm font-medium">Live Driver Location</span>
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse ml-auto" />
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Location updated: {new Date(driverLocation.timestamp).toLocaleTimeString()}
+          <LiveTrackingMap
+            driverLocation={driverLocation}
+            pickupLocation={booking?.pickup_lat && booking?.pickup_lng ? {
+              lat: booking.pickup_lat,
+              lng: booking.pickup_lng,
+              label: booking.pickup_location,
+            } : undefined}
+            dropLocation={booking?.drop_lat && booking?.drop_lng ? {
+              lat: booking.drop_lat,
+              lng: booking.drop_lng,
+              label: booking.drop_location,
+            } : undefined}
+            className="h-[250px]"
+          />
+          <p className="text-xs text-muted-foreground mt-2 text-center">
+            Last updated: {new Date(driverLocation.timestamp).toLocaleTimeString()}
           </p>
         </div>
       )}

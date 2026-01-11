@@ -4,6 +4,7 @@ import { realtimeLocationService, DriverLocation, LocationSubscription } from '@
 import { notificationService } from '@/services/NotificationService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { triggerNotificationFeedback } from '@/utils/notificationSoundVibration';
 
 interface UseRideTrackingOptions {
   bookingId?: string;
@@ -129,15 +130,18 @@ export const useBookingUpdates = () => {
 
     const subscription = realtimeLocationService.subscribeToBookingUpdates(
       user.id,
-      (booking) => {
+      async (booking) => {
         setLatestUpdate(booking);
         
-        // Show appropriate notification based on status
+        // Show appropriate notification based on status with sound/vibration
         if (booking.status === 'confirmed') {
+          await triggerNotificationFeedback({ type: 'success', playSound: true, vibrate: true });
           notificationService.showToast('Booking Confirmed!', 'Your ride has been confirmed', 'success');
         } else if (booking.status === 'rejected') {
+          await triggerNotificationFeedback({ type: 'alert', playSound: true, vibrate: true });
           notificationService.showToast('Booking Rejected', booking.rejection_reason || 'Driver declined the ride', 'error');
         } else if (booking.status === 'completed') {
+          await triggerNotificationFeedback({ type: 'success', playSound: true, vibrate: true });
           notificationService.showToast('Trip Complete!', 'Don\'t forget to rate your driver', 'success');
         }
       }
@@ -164,8 +168,12 @@ export const useDriverRideRequests = () => {
 
     const subscription = realtimeLocationService.subscribeToRideRequests(
       user.id,
-      (booking) => {
+      async (booking) => {
         setNewRequest(booking);
+        
+        // Trigger urgent feedback for new ride requests
+        await triggerNotificationFeedback({ type: 'urgent', playSound: true, vibrate: true });
+        
         notificationService.showToast(
           'New Ride Request!',
           `${booking.pickup_location} → ${booking.drop_location}`,
