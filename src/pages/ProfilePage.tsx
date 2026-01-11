@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Mail, Phone, Edit, LogOut, Shield, ShieldCheck, ShieldX, Clock, Car, Heart } from "lucide-react";
+import { ArrowLeft, User, Mail, Phone, Edit, LogOut, Shield, ShieldCheck, ShieldX, Clock, Car, Heart, FileText, HelpCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -121,14 +121,35 @@ const ProfilePage = () => {
             { label: "My Rides", path: "/my-rides", icon: Car },
             { label: "My Listed Cars", path: "/pre-owned/my-listings", icon: Car },
             { label: "My Interested Cars", path: "/pre-owned/my-interests", icon: Heart },
-            { label: "Help & Support", path: "/support", icon: null },
           ].map((item) => (
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
               className="w-full text-left px-4 py-4 bg-card border border-border rounded-xl hover:bg-secondary transition-colors flex items-center gap-3"
             >
-              {item.icon && <item.icon className="w-5 h-5 text-muted-foreground" />}
+              <item.icon className="w-5 h-5 text-muted-foreground" />
+              <span className="font-medium text-foreground">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* More Options */}
+      <div className="px-4 mt-6">
+        <h3 className="text-lg font-bold text-foreground mb-4">More</h3>
+        <div className="space-y-3">
+          {[
+            { label: "Help & Support", path: "/support", icon: HelpCircle },
+            { label: "Terms & Conditions", path: "/terms", icon: FileText },
+            { label: "Privacy Policy", path: "/privacy", icon: Shield },
+            { label: "About Us", path: "/about", icon: Info },
+          ].map((item) => (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              className="w-full text-left px-4 py-4 bg-card border border-border rounded-xl hover:bg-secondary transition-colors flex items-center gap-3"
+            >
+              <item.icon className="w-5 h-5 text-muted-foreground" />
               <span className="font-medium text-foreground">{item.label}</span>
             </button>
           ))}

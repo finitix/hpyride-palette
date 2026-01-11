@@ -26,6 +26,10 @@ import WalletPage from "@/pages/WalletPage";
 import DonatePage from "@/pages/DonatePage";
 import NotFound from "@/pages/NotFound";
 import NotificationsPage from "@/pages/NotificationsPage";
+import TermsPage from "@/pages/TermsPage";
+import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
+import SupportPage from "@/pages/SupportPage";
+import AboutPage from "@/pages/AboutPage";
 
 // Pre-owned car pages
 import PreOwnedHomePage from "@/pages/preowned/PreOwnedHomePage";
@@ -81,6 +85,10 @@ const App = () => (
                 <Route path="/wallet" element={<WalletPage />} />
                 <Route path="/donate" element={<DonatePage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                <Route path="/support" element={<SupportPage />} />
+                <Route path="/about" element={<AboutPage />} />
                 
                 {/* Pre-owned car routes */}
                 <Route path="/pre-owned" element={<PreOwnedHomePage />} />
