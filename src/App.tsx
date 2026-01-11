@@ -23,6 +23,7 @@ import DriverPoolPage from "@/pages/DriverPoolPage";
 import ProfilePage from "@/pages/ProfilePage";
 import VerificationPage from "@/pages/VerificationPage";
 import WalletPage from "@/pages/WalletPage";
+import DonatePage from "@/pages/DonatePage";
 import NotFound from "@/pages/NotFound";
 import NotificationsPage from "@/pages/NotificationsPage";
 
@@ -78,6 +79,7 @@ const App = () => (
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/verify" element={<VerificationPage />} />
                 <Route path="/wallet" element={<WalletPage />} />
+                <Route path="/donate" element={<DonatePage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 
                 {/* Pre-owned car routes */}

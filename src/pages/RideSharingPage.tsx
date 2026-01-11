@@ -9,6 +9,7 @@ import SafetyForWomenCard from "@/components/SafetyForWomenCard";
 import VerifiedPoolerBadge from "@/components/VerifiedPoolerBadge";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { supabase } from "@/integrations/supabase/client";
+import { InlineBannerAd } from "@/components/ads/MontagAds";
 
 mapboxgl.accessToken = "pk.eyJ1IjoiZGFybHoiLCJhIjoiY21pbDVzN3VqMTVncjNlcjQ1MGxsYWhoZyJ9.GOk93pZDh2T5inUnOXYF9A";
 
@@ -178,6 +179,8 @@ const RideSharingPage = () => {
           <Search className="w-5 h-5 text-muted-foreground" />
           <span className="text-muted-foreground">Where to?</span>
         </button>
+        {/* Banner Ad */}
+        <InlineBannerAd />
       </div>
 
       <div className="relative flex-1">

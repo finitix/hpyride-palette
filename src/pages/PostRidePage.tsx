@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import LocationInput from "@/components/LocationInput";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { InlineBannerAd } from "@/components/ads/MontagAds";
 
 mapboxgl.accessToken = "pk.eyJ1IjoiZGFybHoiLCJhIjoiY21pbDVzN3VqMTVncjNlcjQ1MGxsYWhoZyJ9.GOk93pZDh2T5inUnOXYF9A";
 
@@ -449,6 +450,9 @@ const PostRidePage = () => {
       <div className="flex-1 overflow-y-auto p-4">
         {step === 1 && (
           <div className="space-y-4">
+            {/* Banner Ad at top of step 1 */}
+            <InlineBannerAd />
+            
             <div ref={mapContainer} className="h-48 rounded-xl overflow-hidden" />
             
             <div className="bg-card border border-border rounded-xl p-4 space-y-4">
@@ -523,6 +527,9 @@ const PostRidePage = () => {
                 </div>
               )}
             </div>
+
+            {/* Banner Ad below route selection */}
+            <InlineBannerAd />
 
             <Button
               variant="hero"

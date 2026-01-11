@@ -5,6 +5,7 @@ import TopHeader from "@/components/TopHeader";
 import ServiceCarousel from "@/components/ServiceCarousel";
 import OurServices from "@/components/OurServices";
 import BottomNavigation from "@/components/BottomNavigation";
+import { InlineBannerAd } from "@/components/ads/MontagAds";
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -31,11 +32,21 @@ const HomePage = () => {
       {/* Service Carousel with floating card */}
       <ServiceCarousel />
       
+      {/* Banner Ad between carousel and services */}
+      <div className="px-4 mt-4">
+        <InlineBannerAd />
+      </div>
+      
       {/* Spacer for the floating card */}
       <div className="h-48" />
       
       {/* Our Services 2x2 Grid */}
       <OurServices />
+      
+      {/* Banner Ad after services */}
+      <div className="px-4">
+        <InlineBannerAd />
+      </div>
       
       {/* Footer */}
       <footer className="text-center py-8 px-4">
