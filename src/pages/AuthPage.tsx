@@ -5,24 +5,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Eye, EyeOff, ArrowLeft, Mail, Loader2 } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Phone, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
-type AuthMode = "signin" | "signup";
+type AuthStep = "phone" | "otp" | "register";
 
 const AuthPage = () => {
   const navigate = useNavigate();
-  const { signIn, signUp, user } = useAuth();
-  const [mode, setMode] = useState<AuthMode>("signin");
+  const { user } = useAuth();
+  const [step, setStep] = useState<AuthStep>("phone");
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Email/Password form fields
+  // Phone form fields
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  
+  // Registration form fields (for new users)
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
   const [gender, setGender] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
@@ -33,114 +36,176 @@ const AuthPage = () => {
     }
   }, [user, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-
-    try {
-      if (mode === "signin") {
-        const { error } = await signIn(email, password);
-        if (error) {
-          if (error.message.includes("Invalid login credentials")) {
-            toast.error("Invalid email or password");
-          } else {
-            toast.error(error.message);
-          }
-        } else {
-          toast.success("Welcome back!");
-          navigate("/home", { replace: true });
-        }
-      } else {
-        if (!agreedToTerms) {
-          toast.error("Please agree to the Terms & Conditions");
-          setLoading(false);
-          return;
-        }
-        
-        if (password.length < 6) {
-          toast.error("Password must be at least 6 characters");
-          setLoading(false);
-          return;
-        }
-
-        const { error } = await signUp(email, password, { 
-          full_name: fullName, 
-          phone: phone ? `+91${phone.replace(/\D/g, '')}` : undefined, 
-          gender 
-        });
-        
-        if (error) {
-          if (error.message.includes("already registered") || error.message.includes("already been registered")) {
-            toast.error("This email is already registered. Please sign in.");
-          } else {
-            toast.error(error.message);
-          }
-        } else {
-          toast.success("Account created successfully!");
-          navigate("/welcome", { replace: true });
-        }
-      }
-    } catch (err) {
-      toast.error("An unexpected error occurred");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Google Sign-In using Supabase OAuth
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
-    try {
-      const redirectUrl = `${window.location.origin}/home`;
-      
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectUrl,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        },
-      });
-
-      if (error) {
-        console.error("Google sign-in error:", error);
-        toast.error("Google sign-in failed. Please try again.");
-      }
-    } catch (error: any) {
-      console.error("Google sign-in error:", error);
-      toast.error("Google sign-in failed. Please try again.");
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  // Magic Link Sign-In
-  const handleMagicLinkSignIn = async () => {
-    if (!email) {
-      toast.error("Please enter your email address");
+    
+    if (phone.length !== 10) {
+      toast.error("Please enter a valid 10-digit mobile number");
       return;
     }
 
     setLoading(true);
     try {
-      const redirectUrl = `${window.location.origin}/home`;
+      const formattedPhone = `+91${phone}`;
       
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: redirectUrl,
-        },
+      const { data, error } = await supabase.functions.invoke('send-otp', {
+        body: { phone: formattedPhone }
       });
 
       if (error) {
-        toast.error(error.message);
-      } else {
-        toast.success("Magic link sent! Check your email inbox.");
+        console.error('Send OTP error:', error);
+        toast.error("Failed to send OTP. Please try again.");
+        return;
       }
-    } catch (error: any) {
-      toast.error("Failed to send magic link. Please try again.");
+
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      toast.success("OTP sent successfully!");
+      setStep("otp");
+    } catch (err) {
+      console.error('OTP error:', err);
+      toast.error("Failed to send OTP. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (otp.length !== 6) {
+      toast.error("Please enter a valid 6-digit OTP");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formattedPhone = `+91${phone}`;
+      
+      const { data, error } = await supabase.functions.invoke('verify-otp', {
+        body: { phone: formattedPhone, code: otp }
+      });
+
+      if (error) {
+        console.error('Verify OTP error:', error);
+        toast.error("Invalid OTP. Please try again.");
+        return;
+      }
+
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      if (data.needsRegistration) {
+        // New user, show registration form
+        setStep("register");
+        toast.success("OTP verified! Please complete your profile.");
+        return;
+      }
+
+      // Existing user, sign them in
+      if (data.email) {
+        // Sign in with magic link for existing users
+        const { error: signInError } = await supabase.auth.signInWithOtp({
+          email: data.email,
+          options: {
+            shouldCreateUser: false,
+          }
+        });
+
+        if (signInError) {
+          // Try password-less sign in
+          toast.success("Welcome back! Check your email for the login link.");
+        } else {
+          toast.success("Welcome back! Check your email for the login link.");
+        }
+      }
+    } catch (err) {
+      console.error('Verify error:', err);
+      toast.error("Verification failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!agreedToTerms) {
+      toast.error("Please agree to the Terms & Conditions");
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formattedPhone = `+91${phone}`;
+      
+      // Verify OTP again with user data to create account
+      const { data, error } = await supabase.functions.invoke('verify-otp', {
+        body: { 
+          phone: formattedPhone, 
+          code: otp,
+          userData: {
+            email,
+            password,
+            fullName,
+            gender,
+          }
+        }
+      });
+
+      if (error || data.error) {
+        toast.error(data?.error || "Registration failed. Please try again.");
+        return;
+      }
+
+      // Sign in the new user
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        toast.error("Account created! Please sign in with your email and password.");
+        // Reset to show simple login
+        setStep("phone");
+        return;
+      }
+
+      toast.success("Account created successfully!");
+      navigate("/welcome", { replace: true });
+    } catch (err) {
+      console.error('Register error:', err);
+      toast.error("Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    setLoading(true);
+    try {
+      const formattedPhone = `+91${phone}`;
+      
+      const { data, error } = await supabase.functions.invoke('send-otp', {
+        body: { phone: formattedPhone }
+      });
+
+      if (error || data.error) {
+        toast.error(data?.error || "Failed to resend OTP");
+        return;
+      }
+
+      toast.success("OTP resent successfully!");
+    } catch (err) {
+      toast.error("Failed to resend OTP");
     } finally {
       setLoading(false);
     }
@@ -150,7 +215,14 @@ const AuthPage = () => {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="p-4 flex items-center">
-        <button onClick={() => navigate("/")} className="p-2 -ml-2">
+        <button 
+          onClick={() => {
+            if (step === "otp") setStep("phone");
+            else if (step === "register") setStep("otp");
+            else navigate("/");
+          }} 
+          className="p-2 -ml-2"
+        >
           <ArrowLeft className="w-6 h-6 text-foreground" />
         </button>
         <span className="ml-2 text-lg font-bold text-foreground">HpyRide.com</span>
@@ -158,24 +230,147 @@ const AuthPage = () => {
 
       {/* Content */}
       <div className="flex-1 px-6 py-8 animate-fade-in">
-        <h1 className="text-2xl font-bold text-foreground mb-2">
-          {mode === "signin" ? "Welcome back" : "Create account"}
-        </h1>
-        <p className="text-muted-foreground text-sm mb-8">
-          {mode === "signin"
-            ? "Sign in to continue to HpyRide"
-            : "Simple, fast — get started with HpyRide"}
-        </p>
+        {step === "phone" && (
+          <>
+            <h1 className="text-2xl font-bold text-foreground mb-2">
+              Login with OTP
+            </h1>
+            <p className="text-muted-foreground text-sm mb-8">
+              Enter your mobile number to receive a verification code
+            </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === "signup" && (
-            <>
+            <form onSubmit={handleSendOTP} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="fullName">Full name</Label>
+                <Label htmlFor="phone">Mobile Number</Label>
+                <div className="flex gap-2">
+                  <div className="flex items-center justify-center px-4 bg-muted rounded-xl border border-border text-sm font-medium text-foreground min-w-[60px]">
+                    +91
+                  </div>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="Enter 10-digit mobile number"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    className="flex-1"
+                    maxLength={10}
+                    required
+                  />
+                </div>
+              </div>
+
+              <Button type="submit" variant="hero" className="w-full" disabled={loading || phone.length !== 10}>
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Sending OTP...
+                  </>
+                ) : (
+                  <>
+                    <Phone className="w-4 h-4 mr-2" />
+                    Send OTP
+                  </>
+                )}
+              </Button>
+            </form>
+
+            <p className="text-center text-xs text-muted-foreground mt-6">
+              By continuing, you agree to our{" "}
+              <Link to="/terms" className="text-foreground underline">
+                Terms & Conditions
+              </Link>{" "}
+              and{" "}
+              <Link to="/privacy" className="text-foreground underline">
+                Privacy Policy
+              </Link>
+            </p>
+          </>
+        )}
+
+        {step === "otp" && (
+          <>
+            <h1 className="text-2xl font-bold text-foreground mb-2">
+              Verify OTP
+            </h1>
+            <p className="text-muted-foreground text-sm mb-8">
+              Enter the 6-digit code sent to +91 {phone}
+            </p>
+
+            <div className="space-y-6">
+              <div className="flex justify-center">
+                <InputOTP
+                  maxLength={6}
+                  value={otp}
+                  onChange={(value) => setOtp(value)}
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+
+              <Button 
+                onClick={handleVerifyOTP} 
+                variant="hero" 
+                className="w-full" 
+                disabled={loading || otp.length !== 6}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  "Verify & Continue"
+                )}
+              </Button>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={handleResendOTP}
+                  disabled={loading}
+                  className="text-sm text-primary underline"
+                >
+                  Didn't receive OTP? Resend
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("phone");
+                  setOtp("");
+                }}
+                className="w-full text-sm text-muted-foreground underline"
+              >
+                Change mobile number
+              </button>
+            </div>
+          </>
+        )}
+
+        {step === "register" && (
+          <>
+            <h1 className="text-2xl font-bold text-foreground mb-2">
+              Complete Your Profile
+            </h1>
+            <p className="text-muted-foreground text-sm mb-8">
+              Create your account to continue
+            </p>
+
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
                 <Input
                   id="fullName"
                   type="text"
-                  placeholder="John Doe"
+                  placeholder="Enter your full name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
@@ -200,184 +395,73 @@ const AuthPage = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Mobile (Optional)</Label>
-                <div className="flex gap-2">
-                  <div className="flex items-center justify-center px-3 bg-muted rounded-xl border border-border text-sm text-muted-foreground">
-                    +91
-                  </div>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="9876543210"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    className="flex-1"
-                    maxLength={10}
-                  />
-                </div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
               </div>
-            </>
-          )}
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Create Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">At least 6 characters</p>
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-            {mode === "signin" && (
-              <button 
-                type="button" 
-                onClick={handleMagicLinkSignIn}
-                className="text-xs text-primary underline mt-1"
-              >
-                Forgot password? Send magic link
-              </button>
-            )}
-          </div>
-
-          {mode === "signup" && (
-            <div className="flex items-start gap-2">
-              <input
-                type="checkbox"
-                id="terms"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-1 w-4 h-4 rounded border-border accent-primary"
-              />
-              <label htmlFor="terms" className="text-sm text-muted-foreground">
-                I agree to the{" "}
-                <Link to="/terms" className="text-foreground underline">
-                  Terms & Conditions
-                </Link>{" "}
-                and{" "}
-                <Link to="/privacy" className="text-foreground underline">
-                  Privacy Policy
-                </Link>
-              </label>
-            </div>
-          )}
-
-          <Button type="submit" variant="hero" className="w-full" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Please wait...
-              </>
-            ) : mode === "signin" ? (
-              "Sign in"
-            ) : (
-              "Sign up"
-            )}
-          </Button>
-        </form>
-
-        {/* Divider */}
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-          </div>
-        </div>
-
-        {/* Social Login */}
-        <div className="space-y-3">
-          <Button
-            variant="outline"
-            className="w-full flex items-center justify-center gap-2 h-12"
-            onClick={handleGoogleSignIn}
-            disabled={googleLoading}
-          >
-            {googleLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              <div className="flex items-start gap-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="terms"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="mt-1 w-4 h-4 rounded border-border accent-primary"
                 />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                />
-              </svg>
-            )}
-            Sign in with Google
-          </Button>
+                <label htmlFor="terms" className="text-sm text-muted-foreground">
+                  I agree to the{" "}
+                  <Link to="/terms" className="text-foreground underline">
+                    Terms & Conditions
+                  </Link>{" "}
+                  and{" "}
+                  <Link to="/privacy" className="text-foreground underline">
+                    Privacy Policy
+                  </Link>
+                </label>
+              </div>
 
-          {mode === "signin" && (
-            <Button
-              variant="outline"
-              className="w-full flex items-center justify-center gap-2 h-12"
-              onClick={handleMagicLinkSignIn}
-              disabled={loading || !email}
-            >
-              <Mail className="w-4 h-4" />
-              Send Magic Link
-            </Button>
-          )}
-        </div>
-
-        {/* Toggle mode */}
-        <p className="text-center text-sm text-muted-foreground mt-8">
-          {mode === "signin" ? (
-            <>
-              New user?{" "}
-              <button
-                onClick={() => setMode("signup")}
-                className="text-foreground font-semibold underline"
-              >
-                Create account
-              </button>
-            </>
-          ) : (
-            <>
-              Already have an account?{" "}
-              <button
-                onClick={() => setMode("signin")}
-                className="text-foreground font-semibold underline"
-              >
-                Sign in
-              </button>
-            </>
-          )}
-        </p>
+              <Button type="submit" variant="hero" className="w-full" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Creating Account...
+                  </>
+                ) : (
+                  "Create Account"
+                )}
+              </Button>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );
