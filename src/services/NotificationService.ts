@@ -3,6 +3,10 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { 
+  triggerNotificationFeedback, 
+  getNotificationFeedbackType 
+} from "@/utils/notificationSoundVibration";
 
 export type NotificationType = 
   | 'ride_requested'
@@ -191,10 +195,35 @@ class NotificationService {
     });
   }
 
-  // Show in-app toast notification
-  showToast(title: string, description?: string, type: 'success' | 'error' | 'info' = 'info'): void {
+  // Show in-app toast notification with sound and vibration
+  async showToast(title: string, description?: string, type: 'success' | 'error' | 'info' = 'info'): Promise<void> {
+    // Trigger sound and vibration
+    const feedbackType = type === 'success' ? 'success' : type === 'error' ? 'alert' : 'default';
+    await triggerNotificationFeedback({
+      type: feedbackType,
+      playSound: true,
+      vibrate: true,
+    });
+
     const toastFn = type === 'success' ? toast.success : type === 'error' ? toast.error : toast.info;
     toastFn(title, { description });
+  }
+
+  // Show in-app notification with specific type for proper feedback
+  async showNotificationToast(
+    title: string, 
+    description: string, 
+    notificationType: string
+  ): Promise<void> {
+    const feedbackType = getNotificationFeedbackType(notificationType);
+    
+    await triggerNotificationFeedback({
+      type: feedbackType,
+      playSound: true,
+      vibrate: true,
+    });
+
+    toast.info(title, { description });
   }
 }
 

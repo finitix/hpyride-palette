@@ -4,6 +4,11 @@ import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } fro
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { 
+  triggerNotificationFeedback, 
+  getNotificationFeedbackType,
+  NotificationType as FeedbackType
+} from '@/utils/notificationSoundVibration';
 
 interface PushNotificationState {
   token: string | null;
@@ -120,8 +125,19 @@ export const usePushNotifications = () => {
     // Notification received while app is in foreground
     const foregroundListener = PushNotifications.addListener(
       'pushNotificationReceived',
-      (notification: PushNotificationSchema) => {
+      async (notification: PushNotificationSchema) => {
         console.log('Push notification received:', notification);
+        
+        // Determine notification type from data
+        const notificationType = notification.data?.type || 'general';
+        const feedbackType = getNotificationFeedbackType(notificationType);
+        
+        // Trigger sound and vibration
+        await triggerNotificationFeedback({
+          type: feedbackType,
+          playSound: true,
+          vibrate: true,
+        });
         
         // Show a toast for foreground notifications
         toast.info(notification.title || 'New Notification', {
