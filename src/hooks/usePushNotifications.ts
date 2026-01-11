@@ -27,28 +27,37 @@ export const usePushNotifications = () => {
     if (!user) return;
 
     try {
-      // Update the profile with FCM token using a custom column or notifications table
+      // Update the profile with FCM token
       const { error } = await supabase
-        .from('notifications')
-        .upsert({
-          user_id: user.id,
-          type: 'fcm_token',
-          title: 'FCM Token',
-          body: token,
-          data: { platform: isNative ? 'mobile' : 'web', registered_at: new Date().toISOString() }
-        }, {
-          onConflict: 'user_id,type'
-        });
+        .from('profiles')
+        .update({ fcm_token: token })
+        .eq('user_id', user.id);
 
       if (error) {
         console.error('Error saving FCM token:', error);
+        // Try to insert if update fails (in case profile doesn't exist)
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .upsert({
+            user_id: user.id,
+            fcm_token: token,
+            updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'user_id',
+          });
+
+        if (insertError) {
+          console.error('Error upserting FCM token:', insertError);
+        } else {
+          console.log('FCM token saved via upsert');
+        }
       } else {
         console.log('FCM token saved successfully');
       }
     } catch (err) {
       console.error('Failed to save FCM token:', err);
     }
-  }, [user, isNative]);
+  }, [user]);
 
   const registerPushNotifications = useCallback(async () => {
     if (!isNative) {
