@@ -1,37 +1,140 @@
-import { ArrowLeft, MessageCircle, Phone, Mail, HelpCircle, FileText, Shield, CreditCard, Car, AlertTriangle } from "lucide-react";
+import { ArrowLeft, MessageCircle, Phone, Mail, HelpCircle, FileText, Shield, CreditCard, Car, AlertTriangle, MapPin, Users, Clock, Star, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import BottomNavigation from "@/components/BottomNavigation";
 import { toast } from "sonner";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const SupportPage = () => {
   const navigate = useNavigate();
 
-  const faqItems = [
+  const faqCategories = [
     {
-      icon: Car,
-      question: "How do I book a ride?",
-      answer: "Search for available rides from your location, select a ride that matches your schedule, and confirm booking with the driver."
+      title: "Getting Started",
+      items: [
+        {
+          question: "How do I create an account?",
+          answer: "Download the HpyRide app, enter your phone number, verify with OTP, and complete your profile with name, email, and gender. You can then explore the app and book rides."
+        },
+        {
+          question: "Why do I need to verify my profile?",
+          answer: "Verification ensures safety for all users. Verified users can post rides, list cars, and access all features. Upload your government ID and a selfie video for verification."
+        },
+        {
+          question: "How long does verification take?",
+          answer: "Verification is typically completed within 24-48 hours. You'll receive a notification once your profile is verified or if additional information is needed."
+        },
+      ]
     },
     {
-      icon: CreditCard,
-      question: "How do payments work?",
-      answer: "Payments are made directly to the driver. You can pay via cash or online payment methods as agreed with the driver."
+      title: "Booking Rides",
+      items: [
+        {
+          question: "How do I book a ride?",
+          answer: "Go to Ride Sharing → Find Ride, enter your pickup and drop locations, select your travel date, and browse available rides. Tap on a ride to see details and book your seat."
+        },
+        {
+          question: "Can I cancel a booking?",
+          answer: "Yes, you can cancel from 'My Rides' section. We recommend canceling at least 2 hours before the ride for courtesy. Frequent cancellations may affect your account."
+        },
+        {
+          question: "How do I pay for rides?",
+          answer: "Payments are made directly to the driver via cash or UPI as agreed. The fare is calculated based on distance and the driver's per-km rate shown before booking."
+        },
+        {
+          question: "What if the driver doesn't show up?",
+          answer: "Contact the driver through in-app chat. If unresponsive, cancel the booking and report the issue through Help & Support. We'll investigate and take appropriate action."
+        },
+      ]
     },
     {
-      icon: Shield,
-      question: "How do I verify my profile?",
-      answer: "Go to Profile > Verify Now, upload your ID proof and a selfie video. Our team will verify within 24-48 hours."
+      title: "Offering Rides",
+      items: [
+        {
+          question: "How do I post a ride as a driver?",
+          answer: "Go to Ride Sharing → Offer Ride, enter route details, set your price per km and available seats. Your ride will be verified by admin before publishing."
+        },
+        {
+          question: "Why is my ride pending verification?",
+          answer: "All rides are verified to ensure safety and authenticity. Your ride will be published once verified. This usually takes a few hours."
+        },
+        {
+          question: "Can I reject a booking request?",
+          answer: "Yes, you can accept or reject booking requests from riders. Provide a reason when rejecting to help the rider understand."
+        },
+        {
+          question: "How do I add my vehicle?",
+          answer: "Go to Profile → Verification → Add Vehicle. Enter vehicle details, upload RC book, insurance, pollution certificate, and vehicle photos for verification."
+        },
+      ]
     },
     {
-      icon: AlertTriangle,
-      question: "What if I need to cancel a ride?",
-      answer: "You can cancel a booking from My Rides section. Please cancel at least 2 hours before the scheduled time."
+      title: "Pre-Owned Cars",
+      items: [
+        {
+          question: "How do I list my car for sale?",
+          answer: "Go to Pre-Owned → Sell Your Car, fill in car details (brand, model, year, km driven, price), upload photos, and submit for verification."
+        },
+        {
+          question: "How do I contact a car seller?",
+          answer: "On the car details page, tap 'Show Interest' to submit your details. You can also use the in-app chat to communicate with the seller."
+        },
+        {
+          question: "Is HpyRide responsible for car quality?",
+          answer: "HpyRide is a marketplace connecting buyers and sellers. We verify listings but don't guarantee vehicle condition. Always inspect the car before purchase."
+        },
+        {
+          question: "How do I report a suspicious listing?",
+          answer: "Tap the 'Report' button on any car listing page. Provide the reason and details. Our team will investigate and remove fraudulent listings."
+        },
+      ]
     },
     {
-      icon: FileText,
-      question: "How do I post a ride as a driver?",
-      answer: "Go to Ride Sharing > Offer Ride, fill in your route details, set your price, and publish the ride."
+      title: "Safety & Security",
+      items: [
+        {
+          question: "What safety features does HpyRide offer?",
+          answer: "SOS emergency button, real-time location sharing, verified profiles, women-only rides option, in-app chat, and the ability to share ride details with contacts."
+        },
+        {
+          question: "How do I use the SOS feature?",
+          answer: "During an active ride, tap the SOS button to alert emergency contacts with your real-time location. This feature is available on the navigation screen."
+        },
+        {
+          question: "What are women-only rides?",
+          answer: "Female drivers can mark their rides as 'Women Only' so only female riders can book. This provides an additional safety option for women travelers."
+        },
+        {
+          question: "How do I report inappropriate behavior?",
+          answer: "Go to Help & Support, describe the incident with relevant details. You can also rate and review the user after the ride. Serious violations lead to account suspension."
+        },
+      ]
+    },
+    {
+      title: "Account & Technical",
+      items: [
+        {
+          question: "How do I update my profile?",
+          answer: "Go to Profile and tap the edit icon to update your name, email, or photo. Phone number changes require re-verification."
+        },
+        {
+          question: "Why am I not receiving notifications?",
+          answer: "Check that notifications are enabled in your device settings for HpyRide. Also ensure you have a stable internet connection."
+        },
+        {
+          question: "How do I delete my account?",
+          answer: "Contact support at support@hpyride.com with your registered phone number. Account deletion is permanent and cannot be undone."
+        },
+        {
+          question: "The app is not working properly. What should I do?",
+          answer: "Try force-closing and reopening the app. If issues persist, clear app cache, update to the latest version, or reinstall the app."
+        },
+      ]
     },
   ];
 
@@ -93,16 +196,25 @@ const SupportPage = () => {
             <HelpCircle className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-bold text-foreground">Frequently Asked Questions</h2>
           </div>
-          <div className="space-y-3">
-            {faqItems.map((item, index) => (
-              <div key={index} className="bg-card border border-border rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                  <item.icon className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-2">{item.question}</h3>
-                    <p className="text-sm text-muted-foreground">{item.answer}</p>
-                  </div>
-                </div>
+          
+          <div className="space-y-4">
+            {faqCategories.map((category, categoryIndex) => (
+              <div key={categoryIndex} className="bg-card border border-border rounded-xl overflow-hidden">
+                <h3 className="font-semibold text-foreground bg-secondary px-4 py-3">
+                  {category.title}
+                </h3>
+                <Accordion type="single" collapsible className="px-4">
+                  {category.items.map((item, itemIndex) => (
+                    <AccordionItem key={itemIndex} value={`${categoryIndex}-${itemIndex}`}>
+                      <AccordionTrigger className="text-left text-sm">
+                        {item.question}
+                      </AccordionTrigger>
+                      <AccordionContent className="text-muted-foreground text-sm">
+                        {item.answer}
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
               </div>
             ))}
           </div>
@@ -141,11 +253,25 @@ const SupportPage = () => {
 
         {/* Support Hours */}
         <section className="bg-secondary rounded-xl p-4 text-center">
-          <p className="text-sm text-muted-foreground">
-            Support Hours: 9 AM - 9 PM (Mon - Sat)
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <Clock className="w-6 h-6 text-primary mx-auto mb-2" />
+          <p className="font-semibold text-foreground">Support Hours</p>
+          <p className="text-sm text-muted-foreground">9:00 AM - 9:00 PM (Mon - Sat)</p>
+          <p className="text-xs text-muted-foreground mt-2">
             Average response time: 2-4 hours
+          </p>
+        </section>
+
+        {/* Emergency */}
+        <section className="bg-destructive/10 border border-destructive/20 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-5 h-5 text-destructive" />
+            <h3 className="font-semibold text-foreground">Emergency?</h3>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">
+            If you're in immediate danger, please contact local emergency services (100/112) first, then use the SOS feature in the app.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            For safety concerns: emergency@hpyride.com
           </p>
         </section>
       </div>
