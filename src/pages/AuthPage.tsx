@@ -7,18 +7,18 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Eye, EyeOff, ArrowLeft, Phone, Mail, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import PhoneEmailButton from "@/components/auth/PhoneEmailButton";
+import { useFirebaseOTP } from "@/hooks/useFirebaseOTP";
+import PhoneInput from "@/components/auth/PhoneInput";
+import OTPInput from "@/components/auth/OTPInput";
 
 type AuthMode = "signin" | "signup";
 type AuthMethod = "email" | "phone";
-type PhoneStep = "phone" | "verifying" | "register";
 
 const AuthPage = () => {
   const navigate = useNavigate();
   const { signIn, signUp, user } = useAuth();
   const [mode, setMode] = useState<AuthMode>("signin");
   const [authMethod, setAuthMethod] = useState<AuthMethod>("email");
-  const [phoneStep, setPhoneStep] = useState<PhoneStep>("phone");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -30,9 +30,19 @@ const AuthPage = () => {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [optionalPhone, setOptionalPhone] = useState("");
 
-  // Phone.email fields
-  const [verifiedPhone, setVerifiedPhone] = useState("");
-  const [userJsonUrl, setUserJsonUrl] = useState("");
+  // Firebase OTP hook
+  const {
+    step: phoneStep,
+    phoneNumber,
+    otp,
+    loading: otpLoading,
+    setPhoneNumber,
+    setOtp,
+    reset: resetOTP,
+    sendOTPCode,
+    verifyOTPCode,
+    resendOTP,
+  } = useFirebaseOTP();
 
   // Redirect if already logged in
   useEffect(() => {
@@ -96,54 +106,36 @@ const AuthPage = () => {
     }
   };
 
-  // Phone.email verification handler
-  const handlePhoneVerified = async (jsonUrl: string) => {
-    setLoading(true);
-    setUserJsonUrl(jsonUrl);
-    setPhoneStep("verifying");
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('verify-phone-email', {
-        body: { userJsonUrl: jsonUrl }
-      });
+  // Handle Send OTP
+  const handleSendOTP = async () => {
+    await sendOTPCode('recaptcha-container');
+  };
 
-      if (error) {
-        console.error('Verify phone error:', error);
-        toast.error("Failed to verify phone. Please try again.");
-        setPhoneStep("phone");
-        return;
-      }
+  // Handle Verify OTP
+  const handleVerifyOTP = async () => {
+    const result = await verifyOTPCode();
+    if (result.success && result.user) {
+      // Check if user exists in profiles
+      const formattedPhone = `+91${phoneNumber}`;
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('phone', formattedPhone)
+        .maybeSingle();
 
-      if (data.error) {
-        toast.error(data.error);
-        setPhoneStep("phone");
-        return;
+      if (existingProfile && existingProfile.email) {
+        // Existing user - redirect to email sign in
+        toast.success(`Welcome back! Please sign in with ${existingProfile.email}`);
+        setEmail(existingProfile.email);
+        setAuthMethod("email");
+        setMode("signin");
+        resetOTP();
       }
-
-      if (data.verified) {
-        setVerifiedPhone(data.phoneNumber);
-        
-        if (data.isNewUser || data.needsRegistration) {
-          setPhoneStep("register");
-          toast.success("Phone verified! Please complete your profile.");
-        } else if (data.email) {
-          // Existing user - prompt to sign in with email
-          toast.success(`Welcome back! Please sign in with ${data.email}`);
-          setEmail(data.email);
-          setAuthMethod("email");
-          setMode("signin");
-        }
-      }
-    } catch (err) {
-      console.error('Verify error:', err);
-      toast.error("Verification failed. Please try again.");
-      setPhoneStep("phone");
-    } finally {
-      setLoading(false);
+      // New user will show profile form (step === 'profile')
     }
   };
 
-  // Phone registration after verification
+  // Phone registration after OTP verification
   const handlePhoneRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -159,50 +151,52 @@ const AuthPage = () => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('verify-phone-email', {
-        body: { 
-          userJsonUrl,
-          userData: {
-            email,
-            password,
-            fullName,
+      const formattedPhone = `+91${phoneNumber}`;
+      
+      // Create user with email/password in Supabase
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            full_name: fullName,
+            phone: formattedPhone,
             gender,
           }
         }
       });
 
-      if (error || data.error) {
-        toast.error(data?.error || "Registration failed. Please try again.");
+      if (authError) {
+        if (authError.message.includes("already registered")) {
+          toast.error("This email is already registered. Please sign in.");
+          setAuthMethod("email");
+          setMode("signin");
+        } else {
+          toast.error(authError.message);
+        }
         return;
       }
 
-      // Sign in with the new credentials
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      if (authData.user) {
+        // Create profile
+        await supabase.from('profiles').upsert({
+          user_id: authData.user.id,
+          email,
+          phone: formattedPhone,
+          full_name: fullName,
+          gender,
+        });
 
-      if (signInError) {
-        toast.error("Account created! Please sign in with your email and password.");
-        setAuthMethod("email");
-        setMode("signin");
-        return;
+        toast.success("Account created successfully!");
+        navigate("/welcome", { replace: true });
       }
-
-      toast.success("Account created successfully!");
-      navigate("/welcome", { replace: true });
     } catch (err) {
       console.error('Register error:', err);
       toast.error("Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const resetPhoneFlow = () => {
-    setPhoneStep("phone");
-    setVerifiedPhone("");
-    setUserJsonUrl("");
   };
 
   return (
@@ -212,8 +206,7 @@ const AuthPage = () => {
         <button 
           onClick={() => {
             if (authMethod === "phone" && phoneStep !== "phone") {
-              if (phoneStep === "register") setPhoneStep("phone");
-              else setPhoneStep("phone");
+              resetOTP();
             } else {
               navigate("/");
             }
@@ -383,7 +376,7 @@ const AuthPage = () => {
               className="w-full flex items-center justify-center gap-2 h-12"
               onClick={() => {
                 setAuthMethod("phone");
-                resetPhoneFlow();
+                resetOTP();
               }}
             >
               <Phone className="w-4 h-4" />
@@ -417,22 +410,44 @@ const AuthPage = () => {
           </>
         )}
 
-        {/* Phone Auth Method - Verification Step */}
+        {/* Phone Auth - Enter Phone Number */}
         {authMethod === "phone" && phoneStep === "phone" && (
           <>
             <h1 className="text-2xl font-bold text-foreground mb-2">
               Login with Phone
             </h1>
             <p className="text-muted-foreground text-sm mb-6">
-              Verify your phone number to continue
+              Enter your mobile number to receive OTP
             </p>
 
             <div className="space-y-6">
-              {/* Phone.email Button */}
-              <PhoneEmailButton 
-                onVerified={handlePhoneVerified}
-                loading={loading}
+              <PhoneInput
+                value={phoneNumber}
+                onChange={setPhoneNumber}
+                disabled={otpLoading}
               />
+
+              {/* reCAPTCHA container */}
+              <div id="recaptcha-container" className="flex justify-center" />
+
+              <Button
+                variant="hero"
+                className="w-full"
+                onClick={handleSendOTP}
+                disabled={otpLoading || phoneNumber.length !== 10}
+              >
+                {otpLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Sending OTP...
+                  </>
+                ) : (
+                  <>
+                    <Phone className="w-4 h-4 mr-2" />
+                    Send OTP
+                  </>
+                )}
+              </Button>
 
               {/* Divider */}
               <div className="relative my-6">
@@ -468,19 +483,58 @@ const AuthPage = () => {
           </>
         )}
 
-        {/* Phone Auth - Verifying */}
-        {authMethod === "phone" && phoneStep === "verifying" && (
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">Verifying...</h2>
-            <p className="text-muted-foreground text-center">
-              Please wait while we verify your phone number
+        {/* Phone Auth - Enter OTP */}
+        {authMethod === "phone" && phoneStep === "otp" && (
+          <>
+            <h1 className="text-2xl font-bold text-foreground mb-2">
+              Verify OTP
+            </h1>
+            <p className="text-muted-foreground text-sm mb-6">
+              Enter the 6-digit code sent to +91 {phoneNumber}
             </p>
-          </div>
+
+            <div className="space-y-6">
+              <OTPInput
+                value={otp}
+                onChange={setOtp}
+                disabled={otpLoading}
+                phoneNumber={phoneNumber}
+              />
+
+              <Button
+                variant="hero"
+                className="w-full"
+                onClick={handleVerifyOTP}
+                disabled={otpLoading || otp.length !== 6}
+              >
+                {otpLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  "Verify OTP"
+                )}
+              </Button>
+
+              <div className="text-center">
+                <button
+                  onClick={() => resendOTP('recaptcha-container')}
+                  disabled={otpLoading}
+                  className="text-sm text-primary underline disabled:opacity-50"
+                >
+                  Didn't receive OTP? Resend
+                </button>
+              </div>
+
+              {/* reCAPTCHA container for resend */}
+              <div id="recaptcha-container" className="flex justify-center" />
+            </div>
+          </>
         )}
 
-        {/* Phone Auth - Registration Form */}
-        {authMethod === "phone" && phoneStep === "register" && (
+        {/* Phone Auth - Profile Form */}
+        {authMethod === "phone" && phoneStep === "profile" && (
           <>
             <h1 className="text-2xl font-bold text-foreground mb-2">
               Complete Your Profile
@@ -488,11 +542,9 @@ const AuthPage = () => {
             <p className="text-muted-foreground text-sm mb-2">
               Create your account to continue
             </p>
-            {verifiedPhone && (
-              <p className="text-sm text-primary mb-6">
-                ✓ Phone verified: {verifiedPhone}
-              </p>
-            )}
+            <p className="text-sm text-primary mb-6">
+              ✓ Phone verified: +91 {phoneNumber}
+            </p>
 
             <form onSubmit={handlePhoneRegister} className="space-y-4">
               <div className="space-y-2">
