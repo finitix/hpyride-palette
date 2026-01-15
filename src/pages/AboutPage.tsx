@@ -189,21 +189,43 @@ const AboutPage = () => {
         <section className="bg-card border border-border rounded-xl p-6 text-center">
           <h3 className="text-lg font-bold text-foreground mb-4">Get in Touch</h3>
           <div className="space-y-2 text-sm text-muted-foreground">
-            <p><strong>Email:</strong> contact@hpyride.com</p>
-            <p><strong>Support:</strong> support@hpyride.com</p>
-            <p><strong>Phone:</strong> +91 98765 43210</p>
-            <p><strong>Location:</strong> Hyderabad, Telangana, India</p>
-          </div>
-          <div className="flex justify-center gap-4 mt-4">
-            <a href="#" className="text-primary hover:underline text-sm">Facebook</a>
-            <a href="#" className="text-primary hover:underline text-sm">Instagram</a>
-            <a href="#" className="text-primary hover:underline text-sm">Twitter</a>
-            <a href="#" className="text-primary hover:underline text-sm">LinkedIn</a>
+            <p><strong>Support Email:</strong> hpyrideindia@gmail.com</p>
+            <p><strong>Grievance Email:</strong> hpyrideindia@gmail.com</p>
+            <p><strong>WhatsApp:</strong> +91 88976 11021</p>
+            <p><strong>Location:</strong> Hyderabad, India</p>
           </div>
         </section>
 
+        {/* Legal Links */}
+        <section className="space-y-2">
+          <button
+            onClick={() => navigate('/terms')}
+            className="w-full text-left py-3 px-4 bg-card border border-border rounded-xl text-sm text-foreground hover:bg-secondary transition-colors"
+          >
+            Terms & Conditions
+          </button>
+          <button
+            onClick={() => navigate('/privacy')}
+            className="w-full text-left py-3 px-4 bg-card border border-border rounded-xl text-sm text-foreground hover:bg-secondary transition-colors"
+          >
+            Privacy Policy
+          </button>
+          <button
+            onClick={() => navigate('/account-deletion')}
+            className="w-full text-left py-3 px-4 bg-card border border-border rounded-xl text-sm text-foreground hover:bg-secondary transition-colors"
+          >
+            Account Deletion Policy
+          </button>
+          <button
+            onClick={() => navigate('/refund-policy')}
+            className="w-full text-left py-3 px-4 bg-card border border-border rounded-xl text-sm text-foreground hover:bg-secondary transition-colors"
+          >
+            Refund & Cancellation Policy
+          </button>
+        </section>
+
         <p className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
-          © 2024-2026 HpyRide.com. All rights reserved.<br />
+          © 2024-2026 HpyRide.Com. All rights reserved.<br />
           Made with ❤️ in India
         </p>
       </div>

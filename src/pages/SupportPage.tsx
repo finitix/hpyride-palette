@@ -128,7 +128,7 @@ const SupportPage = () => {
         },
         {
           question: "How do I delete my account?",
-          answer: "Contact support at support@hpyride.com with your registered phone number. Account deletion is permanent and cannot be undone."
+          answer: "Send an email to hpyrideindia@gmail.com with subject 'Account Deletion Request'. Deletion requests are processed within 7-30 working days. Account deletion is permanent and cannot be undone."
         },
         {
           question: "The app is not working properly. What should I do?",
@@ -245,6 +245,22 @@ const SupportPage = () => {
             >
               <Shield className="w-5 h-5 mr-3" />
               Privacy Policy
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full justify-start"
+              onClick={() => navigate('/account-deletion')}
+            >
+              <AlertTriangle className="w-5 h-5 mr-3" />
+              Account Deletion
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full justify-start"
+              onClick={() => navigate('/refund-policy')}
+            >
+              <CreditCard className="w-5 h-5 mr-3" />
+              Refund & Cancellation Policy
             </Button>
             <Button
               variant="ghost"

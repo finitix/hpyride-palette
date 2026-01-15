@@ -15,198 +15,164 @@ const PrivacyPolicyPage = () => {
       </header>
 
       <div className="px-4 py-6 space-y-6">
+        <p className="text-sm text-muted-foreground">
+          <strong>Effective Date:</strong> 01/01/2026<br />
+          <strong>Applicable Regions:</strong> India & Worldwide
+        </p>
+
         <section>
-          <h2 className="text-xl font-bold text-foreground mb-3">Introduction</h2>
+          <h2 className="text-xl font-bold text-foreground mb-3">1.1 Introduction</h2>
           <p className="text-muted-foreground leading-relaxed">
-            HpyRide ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application and services.
+            HpyRide.Com ("HpyRide", "we", "our", "us") is a global mobility and automobile services platform operating across India and internationally. We are committed to protecting user privacy and ensuring safety for all categories of users.
+          </p>
+          <p className="text-muted-foreground leading-relaxed mt-2">
+            By using the HpyRide.Com app or website, you agree to this Privacy Policy.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-bold text-foreground mb-3">Information We Collect</h2>
+          <h2 className="text-xl font-bold text-foreground mb-3">1.2 Services Covered</h2>
+          <p className="text-muted-foreground leading-relaxed mb-2">
+            This policy applies to all HpyRide.Com services:
+          </p>
+          <ul className="text-muted-foreground leading-relaxed space-y-2 list-disc list-inside">
+            <li><strong>HpyCabs</strong> — Cab aggregation services for 2-wheelers, 3-wheelers, and 4-wheelers and above (4W+)</li>
+            <li><strong>Car Pooling / Ride Sharing</strong> — Shared rides using 2-wheelers and 4W+ vehicles, including in-city pooling and outstation pooling, and including white-plate and taxi-plate vehicles where permitted by law. This service is designed to reduce traffic congestion, fuel consumption, and environmental impact through shared mobility.</li>
+            <li><strong>Driver Pooling</strong> — Temporary drivers for city and outstation travel</li>
+            <li><strong>Car Rentals</strong> — Vehicles from verified owners and local rental partners</li>
+            <li><strong>Pre-Owned Cars</strong> — Buying and selling of used vehicles through verified sellers</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-bold text-foreground mb-3">1.3 Information We Collect</h2>
           
           <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">Personal Information</h3>
-          <ul className="text-muted-foreground leading-relaxed space-y-2 list-disc list-inside">
-            <li>Full name and date of birth</li>
-            <li>Phone number (used for OTP authentication)</li>
+          <ul className="text-muted-foreground leading-relaxed space-y-1 list-disc list-inside">
+            <li>Name</li>
+            <li>Mobile number</li>
             <li>Email address</li>
-            <li>Gender</li>
-            <li>Profile photo</li>
-            <li>Government ID (Aadhaar, PAN, Voter ID, Passport) for verification</li>
-            <li>Selfie video for identity verification</li>
+            <li>Profile photo (optional)</li>
+            <li>Identity documents where legally or operationally required</li>
           </ul>
 
-          <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">Driver Information</h3>
-          <ul className="text-muted-foreground leading-relaxed space-y-2 list-disc list-inside">
-            <li>Driving license number and images</li>
-            <li>Vehicle details (make, model, registration number)</li>
-            <li>Vehicle images (front, rear, side)</li>
-            <li>RC book, insurance, and pollution certificate</li>
-          </ul>
-
-          <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">Location Data</h3>
-          <ul className="text-muted-foreground leading-relaxed space-y-2 list-disc list-inside">
-            <li>Real-time GPS location during active rides</li>
-            <li>Pickup and drop-off locations for ride bookings</li>
-            <li>Location for nearby ride searches</li>
-            <li>Vehicle location for pre-owned car listings</li>
-          </ul>
-
-          <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">Usage Data</h3>
-          <ul className="text-muted-foreground leading-relaxed space-y-2 list-disc list-inside">
-            <li>Ride history and booking details</li>
-            <li>Chat messages between users</li>
-            <li>Reviews and ratings</li>
-            <li>App usage patterns and preferences</li>
-            <li>Device information (model, OS, app version)</li>
-            <li>Push notification tokens</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-bold text-foreground mb-3">How We Use Your Information</h2>
-          <ul className="text-muted-foreground leading-relaxed space-y-2 list-disc list-inside">
-            <li><strong>Service Delivery:</strong> To match riders with drivers and facilitate ride bookings</li>
-            <li><strong>Verification:</strong> To verify user identity and ensure platform safety</li>
-            <li><strong>Communication:</strong> To send ride updates, booking confirmations, and notifications</li>
-            <li><strong>Safety:</strong> To enable SOS features, location sharing, and emergency contacts</li>
-            <li><strong>Improvement:</strong> To analyze usage patterns and enhance our services</li>
-            <li><strong>Support:</strong> To respond to inquiries and resolve disputes</li>
-            <li><strong>Legal:</strong> To comply with legal obligations and enforce our terms</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-bold text-foreground mb-3">Information Sharing</h2>
+          <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">Location Information (Sensitive)</h3>
           <p className="text-muted-foreground leading-relaxed mb-2">
-            We share your information only in the following circumstances:
+            Collected only during booking and active rides for:
           </p>
-          <ul className="text-muted-foreground leading-relaxed space-y-2 list-disc list-inside">
-            <li><strong>With Other Users:</strong> Riders see driver name, vehicle details, and ratings. Drivers see rider name and pickup location.</li>
-            <li><strong>For Safety:</strong> Emergency contacts receive location data when SOS is triggered</li>
-            <li><strong>Service Providers:</strong> With trusted partners who assist in operating our services (hosting, analytics)</li>
-            <li><strong>Legal Requirements:</strong> When required by law, court order, or government authority</li>
-            <li><strong>Business Transfers:</strong> In case of merger, acquisition, or sale of assets</li>
-          </ul>
-          <p className="text-muted-foreground leading-relaxed mt-3 font-medium">
-            We do NOT sell your personal data to third parties.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-bold text-foreground mb-3">Data Storage & Security</h2>
-          <ul className="text-muted-foreground leading-relaxed space-y-2 list-disc list-inside">
-            <li>Data is stored on secure cloud servers with encryption</li>
-            <li>We use industry-standard security measures (SSL/TLS, encryption at rest)</li>
-            <li>Access to personal data is restricted to authorized personnel only</li>
-            <li>Regular security audits and vulnerability assessments</li>
-            <li>Data is retained as long as your account is active or as required by law</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-bold text-foreground mb-3">Third-Party Services</h2>
-          <p className="text-muted-foreground leading-relaxed">
-            Our app integrates with third-party services:
-          </p>
-          <ul className="text-muted-foreground leading-relaxed space-y-2 list-disc list-inside mt-2">
-            <li><strong>Firebase:</strong> For authentication and push notifications</li>
-            <li><strong>Mapbox:</strong> For maps and navigation</li>
-            <li><strong>Monetag:</strong> For displaying advertisements</li>
-            <li><strong>Payment Gateways:</strong> For future payment processing</li>
+          <ul className="text-muted-foreground leading-relaxed space-y-1 list-disc list-inside">
+            <li>Pickup and drop accuracy</li>
+            <li>Live trip tracking</li>
+            <li>Navigation</li>
+            <li>Safety monitoring, especially for women</li>
+            <li>SOS and emergency response</li>
           </ul>
           <p className="text-muted-foreground leading-relaxed mt-2">
-            These services have their own privacy policies governing their use of your data.
+            Background location is used only during active trips and stops automatically after trip completion.
           </p>
+
+          <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">Contact Access (Emergency Only)</h3>
+          <p className="text-muted-foreground leading-relaxed mb-2">Used only to:</p>
+          <ul className="text-muted-foreground leading-relaxed space-y-1 list-disc list-inside">
+            <li>Select trusted emergency contacts</li>
+            <li>Send SOS alerts</li>
+            <li>Share trip status with trusted contacts</li>
+          </ul>
+          <p className="text-muted-foreground leading-relaxed mt-2">
+            Full contact lists are not stored or used for marketing.
+          </p>
+
+          <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">Vehicle & Driver Information</h3>
+          <ul className="text-muted-foreground leading-relaxed space-y-1 list-disc list-inside">
+            <li>Vehicle registration</li>
+            <li>Driving license</li>
+            <li>Insurance and compliance documents</li>
+          </ul>
+
+          <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">Payment Information</h3>
+          <ul className="text-muted-foreground leading-relaxed space-y-1 list-disc list-inside">
+            <li>Processed via secure third-party gateways</li>
+            <li>HpyRide does not store full card or banking details</li>
+          </ul>
+
+          <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">Technical & Usage Data</h3>
+          <ul className="text-muted-foreground leading-relaxed space-y-1 list-disc list-inside">
+            <li>IP address</li>
+            <li>Device type and OS</li>
+            <li>App logs and crash reports</li>
+            <li>Booking and transaction history</li>
+          </ul>
         </section>
 
         <section>
-          <h2 className="text-xl font-bold text-foreground mb-3">Advertisements</h2>
-          <p className="text-muted-foreground leading-relaxed">
-            We display third-party advertisements through Monetag. These ads may use cookies and similar technologies to serve relevant content. Ad networks may collect device identifiers and usage data. You can opt out of personalized ads through your device settings.
-          </p>
+          <h2 className="text-xl font-bold text-foreground mb-3">1.4 Purpose of Data Use</h2>
+          <p className="text-muted-foreground leading-relaxed mb-2">Data is used only to:</p>
+          <ul className="text-muted-foreground leading-relaxed space-y-1 list-disc list-inside">
+            <li>Provide and manage services</li>
+            <li>Ensure safety and fraud prevention</li>
+            <li>Enable SOS and emergency response</li>
+            <li>Provide customer support</li>
+            <li>Improve platform performance</li>
+            <li>Meet legal obligations</li>
+          </ul>
         </section>
 
         <section>
-          <h2 className="text-xl font-bold text-foreground mb-3">Your Rights</h2>
+          <h2 className="text-xl font-bold text-foreground mb-3">1.5 Data Sharing</h2>
           <p className="text-muted-foreground leading-relaxed mb-2">
-            You have the right to:
+            We do not sell personal data. Data may be shared only with:
           </p>
-          <ul className="text-muted-foreground leading-relaxed space-y-2 list-disc list-inside">
-            <li><strong>Access:</strong> Request a copy of your personal data</li>
-            <li><strong>Correction:</strong> Update or correct inaccurate information</li>
-            <li><strong>Deletion:</strong> Request deletion of your account and data</li>
-            <li><strong>Portability:</strong> Receive your data in a portable format</li>
-            <li><strong>Withdraw Consent:</strong> Opt out of optional data collection</li>
-            <li><strong>Restrict Processing:</strong> Limit how we use your data</li>
-          </ul>
-          <p className="text-muted-foreground leading-relaxed mt-2">
-            To exercise these rights, contact us at privacy@hpyride.com
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-bold text-foreground mb-3">Location Permissions</h2>
-          <p className="text-muted-foreground leading-relaxed">
-            Location access is essential for our core services. You can control location permissions:
-          </p>
-          <ul className="text-muted-foreground leading-relaxed space-y-2 list-disc list-inside mt-2">
-            <li><strong>While Using App:</strong> Location is accessed only when the app is open</li>
-            <li><strong>Always:</strong> Required for active ride tracking (drivers)</li>
-            <li><strong>Never:</strong> Disabling location will limit app functionality</li>
-          </ul>
-          <p className="text-muted-foreground leading-relaxed mt-2">
-            Manage location permissions in your device Settings → Apps → HpyRide.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-bold text-foreground mb-3">Push Notifications</h2>
-          <p className="text-muted-foreground leading-relaxed">
-            We send push notifications for ride updates, booking confirmations, chat messages, and promotional offers. You can disable notifications in your device settings, but this may affect your ability to receive important ride updates.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-bold text-foreground mb-3">Children's Privacy</h2>
-          <p className="text-muted-foreground leading-relaxed">
-            HpyRide is not intended for users under 18 years of age. We do not knowingly collect personal information from children. If we discover that a child has provided us with personal data, we will delete it immediately.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-bold text-foreground mb-3">Data Retention</h2>
-          <ul className="text-muted-foreground leading-relaxed space-y-2 list-disc list-inside">
-            <li>Account data: Retained while account is active + 2 years after deletion</li>
-            <li>Ride history: Retained for 3 years for dispute resolution</li>
-            <li>Chat messages: Retained for 1 year</li>
-            <li>Verification documents: Retained for 5 years as per regulatory requirements</li>
-            <li>Location data: Retained for 90 days</li>
+          <ul className="text-muted-foreground leading-relaxed space-y-1 list-disc list-inside">
+            <li>Drivers, riders, owners, buyers, or sellers involved in a service</li>
+            <li>Payment processors and cloud service providers</li>
+            <li>Government authorities when legally required</li>
           </ul>
         </section>
 
         <section>
-          <h2 className="text-xl font-bold text-foreground mb-3">Changes to This Policy</h2>
+          <h2 className="text-xl font-bold text-foreground mb-3">1.6 Data Security</h2>
           <p className="text-muted-foreground leading-relaxed">
-            We may update this Privacy Policy periodically. We will notify you of significant changes through the app or email. Your continued use of HpyRide after changes indicates acceptance of the updated policy.
+            We use encrypted transmission, secure servers, and access controls. While no system is 100% secure, safety remains our highest priority.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-bold text-foreground mb-3">Contact Us</h2>
+          <h2 className="text-xl font-bold text-foreground mb-3">1.7 Data Retention & Deletion</h2>
           <p className="text-muted-foreground leading-relaxed">
-            For privacy-related questions, concerns, or to exercise your rights:
+            Data is retained only as long as necessary for service delivery and legal compliance. Users may request account deletion at any time.
           </p>
-          <p className="text-muted-foreground mt-2">
-            <strong>Data Protection Officer</strong><br />
-            Email: privacy@hpyride.com<br />
-            Phone: +91 98765 43210<br />
-            Address: Hyderabad, Telangana, India
+        </section>
+
+        <section>
+          <h2 className="text-xl font-bold text-foreground mb-3">1.8 User Rights</h2>
+          <p className="text-muted-foreground leading-relaxed mb-2">Users may:</p>
+          <ul className="text-muted-foreground leading-relaxed space-y-1 list-disc list-inside">
+            <li>Access and update personal data</li>
+            <li>Control permissions via device settings</li>
+            <li>Withdraw consent</li>
+            <li>Request data deletion</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-bold text-foreground mb-3">1.9 Children's Privacy</h2>
+          <p className="text-muted-foreground leading-relaxed">
+            HpyRide is not intended for users under 18 years of age.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-bold text-foreground mb-3">1.10 Contact & Grievance</h2>
+          <p className="text-muted-foreground leading-relaxed">
+            <strong>Company:</strong> HpyRide.Com<br />
+            <strong>Support Email:</strong> hpyrideindia@gmail.com<br />
+            <strong>Grievance Email:</strong> hpyrideindia@gmail.com<br />
+            <strong>Address:</strong> Hyderabad
           </p>
         </section>
 
         <p className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
-          Last updated: January 2026 | Version 1.0
+          Effective Date: 01/01/2026 | Version 1.0
         </p>
       </div>
 

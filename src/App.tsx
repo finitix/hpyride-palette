@@ -29,6 +29,8 @@ import NotFound from "@/pages/NotFound";
 import NotificationsPage from "@/pages/NotificationsPage";
 import TermsPage from "@/pages/TermsPage";
 import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
+import AccountDeletionPage from "@/pages/AccountDeletionPage";
+import RefundPolicyPage from "@/pages/RefundPolicyPage";
 import SupportPage from "@/pages/SupportPage";
 import AboutPage from "@/pages/AboutPage";
 
@@ -89,6 +91,8 @@ const App = () => (
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                <Route path="/account-deletion" element={<AccountDeletionPage />} />
+                <Route path="/refund-policy" element={<RefundPolicyPage />} />
                 <Route path="/support" element={<SupportPage />} />
                 <Route path="/about" element={<AboutPage />} />
                 
