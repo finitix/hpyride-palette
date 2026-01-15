@@ -7,11 +7,11 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Eye, EyeOff, ArrowLeft, Phone, Mail, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import PhoneEmailButton from "@/components/auth/PhoneEmailButton";
 
 type AuthMode = "signin" | "signup";
 type AuthMethod = "email" | "phone";
-type PhoneStep = "phone" | "otp" | "register";
+type PhoneStep = "phone" | "verifying" | "register";
 
 const AuthPage = () => {
   const navigate = useNavigate();
@@ -28,10 +28,11 @@ const AuthPage = () => {
   const [fullName, setFullName] = useState("");
   const [gender, setGender] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [optionalPhone, setOptionalPhone] = useState("");
 
-  // Phone OTP fields
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
+  // Phone.email fields
+  const [verifiedPhone, setVerifiedPhone] = useState("");
+  const [userJsonUrl, setUserJsonUrl] = useState("");
 
   // Redirect if already logged in
   useEffect(() => {
@@ -73,7 +74,7 @@ const AuthPage = () => {
 
         const { error } = await signUp(email, password, { 
           full_name: fullName, 
-          phone: phone ? `+91${phone.replace(/\D/g, '')}` : undefined, 
+          phone: optionalPhone ? `+91${optionalPhone.replace(/\D/g, '')}` : undefined, 
           gender 
         });
         
@@ -95,86 +96,54 @@ const AuthPage = () => {
     }
   };
 
-  // Phone OTP handlers
-  const handleSendOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Phone.email verification handler
+  const handlePhoneVerified = async (jsonUrl: string, phoneNumber: string) => {
+    setLoading(true);
+    setUserJsonUrl(jsonUrl);
+    setPhoneStep("verifying");
     
-    if (phone.length !== 10) {
-      toast.error("Please enter a valid 10-digit mobile number");
-      return;
-    }
-
-    setLoading(true);
     try {
-      const formattedPhone = `+91${phone}`;
-      
-      const { data, error } = await supabase.functions.invoke('send-otp', {
-        body: { phone: formattedPhone }
+      const { data, error } = await supabase.functions.invoke('verify-phone-email', {
+        body: { userJsonUrl: jsonUrl }
       });
 
       if (error) {
-        console.error('Send OTP error:', error);
-        toast.error("Failed to send OTP. Please try again.");
+        console.error('Verify phone error:', error);
+        toast.error("Failed to verify phone. Please try again.");
+        setPhoneStep("phone");
         return;
       }
 
       if (data.error) {
         toast.error(data.error);
+        setPhoneStep("phone");
         return;
       }
 
-      toast.success("OTP sent successfully!");
-      setPhoneStep("otp");
-    } catch (err) {
-      console.error('OTP error:', err);
-      toast.error("Failed to send OTP. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOTP = async () => {
-    if (otp.length !== 6) {
-      toast.error("Please enter a valid 6-digit OTP");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const formattedPhone = `+91${phone}`;
-      
-      const { data, error } = await supabase.functions.invoke('verify-otp', {
-        body: { phone: formattedPhone, code: otp }
-      });
-
-      if (error) {
-        console.error('Verify OTP error:', error);
-        toast.error("Invalid OTP. Please try again.");
-        return;
-      }
-
-      if (data.error) {
-        toast.error(data.error);
-        return;
-      }
-
-      if (data.needsRegistration) {
-        setPhoneStep("register");
-        toast.success("OTP verified! Please complete your profile.");
-        return;
-      }
-
-      if (data.email) {
-        toast.success("Welcome back! Check your email for the login link.");
+      if (data.verified) {
+        setVerifiedPhone(data.phoneNumber);
+        
+        if (data.isNewUser || data.needsRegistration) {
+          setPhoneStep("register");
+          toast.success("Phone verified! Please complete your profile.");
+        } else if (data.email) {
+          // Existing user - prompt to sign in with email
+          toast.success(`Welcome back! Please sign in with ${data.email}`);
+          setEmail(data.email);
+          setAuthMethod("email");
+          setMode("signin");
+        }
       }
     } catch (err) {
       console.error('Verify error:', err);
       toast.error("Verification failed. Please try again.");
+      setPhoneStep("phone");
     } finally {
       setLoading(false);
     }
   };
 
+  // Phone registration after verification
   const handlePhoneRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -190,12 +159,9 @@ const AuthPage = () => {
 
     setLoading(true);
     try {
-      const formattedPhone = `+91${phone}`;
-      
-      const { data, error } = await supabase.functions.invoke('verify-otp', {
+      const { data, error } = await supabase.functions.invoke('verify-phone-email', {
         body: { 
-          phone: formattedPhone, 
-          code: otp,
+          userJsonUrl,
           userData: {
             email,
             password,
@@ -210,6 +176,7 @@ const AuthPage = () => {
         return;
       }
 
+      // Sign in with the new credentials
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -232,31 +199,10 @@ const AuthPage = () => {
     }
   };
 
-  const handleResendOTP = async () => {
-    setLoading(true);
-    try {
-      const formattedPhone = `+91${phone}`;
-      
-      const { data, error } = await supabase.functions.invoke('send-otp', {
-        body: { phone: formattedPhone }
-      });
-
-      if (error || data.error) {
-        toast.error(data?.error || "Failed to resend OTP");
-        return;
-      }
-
-      toast.success("OTP resent successfully!");
-    } catch (err) {
-      toast.error("Failed to resend OTP");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const resetPhoneFlow = () => {
     setPhoneStep("phone");
-    setOtp("");
+    setVerifiedPhone("");
+    setUserJsonUrl("");
   };
 
   return (
@@ -266,8 +212,8 @@ const AuthPage = () => {
         <button 
           onClick={() => {
             if (authMethod === "phone" && phoneStep !== "phone") {
-              if (phoneStep === "otp") setPhoneStep("phone");
-              else if (phoneStep === "register") setPhoneStep("otp");
+              if (phoneStep === "register") setPhoneStep("phone");
+              else setPhoneStep("phone");
             } else {
               navigate("/");
             }
@@ -335,8 +281,8 @@ const AuthPage = () => {
                         id="phoneOptional"
                         type="tel"
                         placeholder="9876543210"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        value={optionalPhone}
+                        onChange={(e) => setOptionalPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                         className="flex-1"
                         maxLength={10}
                       />
@@ -441,7 +387,7 @@ const AuthPage = () => {
               }}
             >
               <Phone className="w-4 h-4" />
-              {mode === "signin" ? "Sign in with Phone OTP" : "Sign up with Phone OTP"}
+              {mode === "signin" ? "Sign in with Phone" : "Sign up with Phone"}
             </Button>
 
             {/* Toggle mode */}
@@ -471,157 +417,82 @@ const AuthPage = () => {
           </>
         )}
 
-        {/* Phone OTP Auth Method */}
+        {/* Phone Auth Method - Verification Step */}
         {authMethod === "phone" && phoneStep === "phone" && (
           <>
             <h1 className="text-2xl font-bold text-foreground mb-2">
-              Login with OTP
+              Login with Phone
             </h1>
             <p className="text-muted-foreground text-sm mb-6">
-              Enter your mobile number to receive a verification code
-            </p>
-
-            <form onSubmit={handleSendOTP} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="phoneNumber">Mobile Number</Label>
-                <div className="flex gap-2">
-                  <div className="flex items-center justify-center px-4 bg-muted rounded-xl border border-border text-sm font-medium text-foreground min-w-[60px]">
-                    +91
-                  </div>
-                  <Input
-                    id="phoneNumber"
-                    type="tel"
-                    placeholder="Enter 10-digit mobile number"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    className="flex-1"
-                    maxLength={10}
-                    required
-                  />
-                </div>
-              </div>
-
-              <Button type="submit" variant="hero" className="w-full" disabled={loading || phone.length !== 10}>
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Sending OTP...
-                  </>
-                ) : (
-                  <>
-                    <Phone className="w-4 h-4 mr-2" />
-                    Send OTP
-                  </>
-                )}
-              </Button>
-            </form>
-
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">Or</span>
-              </div>
-            </div>
-
-            {/* Email Option */}
-            <Button
-              variant="outline"
-              className="w-full flex items-center justify-center gap-2 h-12"
-              onClick={() => setAuthMethod("email")}
-            >
-              <Mail className="w-4 h-4" />
-              Continue with Email
-            </Button>
-
-            <p className="text-center text-xs text-muted-foreground mt-6">
-              By continuing, you agree to our{" "}
-              <Link to="/terms" className="text-foreground underline">
-                Terms & Conditions
-              </Link>{" "}
-              and{" "}
-              <Link to="/privacy" className="text-foreground underline">
-                Privacy Policy
-              </Link>
-            </p>
-          </>
-        )}
-
-        {authMethod === "phone" && phoneStep === "otp" && (
-          <>
-            <h1 className="text-2xl font-bold text-foreground mb-2">
-              Verify OTP
-            </h1>
-            <p className="text-muted-foreground text-sm mb-6">
-              Enter the 6-digit code sent to +91 {phone}
+              Verify your phone number to continue
             </p>
 
             <div className="space-y-6">
-              <div className="flex justify-center">
-                <InputOTP
-                  maxLength={6}
-                  value={otp}
-                  onChange={(value) => setOtp(value)}
-                >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
+              {/* Phone.email Button */}
+              <PhoneEmailButton 
+                onVerified={handlePhoneVerified}
+                loading={loading}
+              />
+
+              {/* Divider */}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">Or</span>
+                </div>
               </div>
 
-              <Button 
-                onClick={handleVerifyOTP} 
-                variant="hero" 
-                className="w-full" 
-                disabled={loading || otp.length !== 6}
+              {/* Email Option */}
+              <Button
+                variant="outline"
+                className="w-full flex items-center justify-center gap-2 h-12"
+                onClick={() => setAuthMethod("email")}
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Verifying...
-                  </>
-                ) : (
-                  "Verify & Continue"
-                )}
+                <Mail className="w-4 h-4" />
+                Continue with Email
               </Button>
 
-              <div className="text-center space-y-2">
-                <button
-                  type="button"
-                  onClick={handleResendOTP}
-                  disabled={loading}
-                  className="text-sm text-primary underline"
-                >
-                  Didn't receive OTP? Resend
-                </button>
-                <br />
-                <button
-                  type="button"
-                  onClick={resetPhoneFlow}
-                  className="text-sm text-muted-foreground underline"
-                >
-                  Change mobile number
-                </button>
-              </div>
+              <p className="text-center text-xs text-muted-foreground mt-6">
+                By continuing, you agree to our{" "}
+                <Link to="/terms" className="text-foreground underline">
+                  Terms & Conditions
+                </Link>{" "}
+                and{" "}
+                <Link to="/privacy" className="text-foreground underline">
+                  Privacy Policy
+                </Link>
+              </p>
             </div>
           </>
         )}
 
+        {/* Phone Auth - Verifying */}
+        {authMethod === "phone" && phoneStep === "verifying" && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">Verifying...</h2>
+            <p className="text-muted-foreground text-center">
+              Please wait while we verify your phone number
+            </p>
+          </div>
+        )}
+
+        {/* Phone Auth - Registration Form */}
         {authMethod === "phone" && phoneStep === "register" && (
           <>
             <h1 className="text-2xl font-bold text-foreground mb-2">
               Complete Your Profile
             </h1>
-            <p className="text-muted-foreground text-sm mb-6">
+            <p className="text-muted-foreground text-sm mb-2">
               Create your account to continue
             </p>
+            {verifiedPhone && (
+              <p className="text-sm text-primary mb-6">
+                ✓ Phone verified: {verifiedPhone}
+              </p>
+            )}
 
             <form onSubmit={handlePhoneRegister} className="space-y-4">
               <div className="space-y-2">

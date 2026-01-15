@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AdminAuthProvider } from "@/admin/contexts/AdminAuthContext";
 import PushNotificationProvider from "@/components/PushNotificationProvider";
+import AndroidBackButtonHandler from "@/components/AndroidBackButtonHandler";
 import SplashScreen from "@/pages/SplashScreen";
 import AuthPage from "@/pages/AuthPage";
 import WelcomePage from "@/pages/WelcomePage";
@@ -65,6 +66,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
+              <AndroidBackButtonHandler />
               <Routes>
                 <Route path="/" element={<SplashScreen />} />
                 <Route path="/auth" element={<AuthPage />} />
