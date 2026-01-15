@@ -131,21 +131,21 @@ const ServiceCarousel = () => {
   return (
     <div className="relative">
       {/* Black background section */}
-      <div className="bg-splash-bg text-splash-fg pt-6 pb-40 px-6">
+      <div className="bg-splash-bg text-splash-fg pt-6 pb-40 px-6 lg:pt-8 lg:pb-48 lg:px-8">
         <div
-          className={`transition-opacity duration-300 ${
+          className={`transition-opacity duration-300 lg:max-w-3xl lg:mx-auto ${
             isTransitioning ? "opacity-0" : "opacity-100"
           }`}
         >
           <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-bold mb-2">{currentCard.title}</h2>
+            <h2 className="text-2xl font-bold mb-2 lg:text-3xl">{currentCard.title}</h2>
             {currentCard.comingSoon && (
               <span className="px-2 py-0.5 bg-splash-fg/20 text-splash-fg text-[10px] font-bold rounded-full mb-2">
                 COMING SOON
               </span>
             )}
           </div>
-          <p className="text-splash-fg/70 text-sm">
+          <p className="text-splash-fg/70 text-sm lg:text-base">
             {currentCard.comingSoon 
               ? `${currentCard.title} is launching soon!`
               : `Find the best ${currentCard.title.toLowerCase()} options`
@@ -154,10 +154,10 @@ const ServiceCarousel = () => {
         </div>
       </div>
 
-      {/* Floating white card */}
-      <div className="absolute left-4 right-4 top-28 z-10">
+      {/* Floating white card - responsive width */}
+      <div className="absolute left-4 right-4 top-28 z-10 lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-2xl lg:px-6 lg:top-32">
         <div
-          className={`bg-card rounded-2xl shadow-xl p-6 transition-all duration-300 ${
+          className={`bg-card rounded-2xl shadow-xl p-6 transition-all duration-300 lg:p-8 ${
             isTransitioning ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0"
           }`}
           onTouchStart={handleUserInteraction}
@@ -197,7 +197,7 @@ const ServiceCarousel = () => {
                     <input
                       type={field.type}
                       placeholder={field.placeholder}
-                      className="w-full pl-12 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      className="w-full pl-12 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm lg:h-12 lg:text-base"
                       disabled={currentCard.comingSoon}
                       onFocus={handleUserInteraction}
                     />
@@ -209,7 +209,7 @@ const ServiceCarousel = () => {
 
           <Button
             variant={currentCard.comingSoon ? "secondary" : "hero"}
-            className="w-full mt-6"
+            className="w-full mt-6 lg:mt-8 lg:h-12 lg:text-base"
             onClick={handleButtonClick}
           >
             {currentCard.comingSoon ? (
@@ -228,7 +228,7 @@ const ServiceCarousel = () => {
       </div>
 
       {/* Carousel indicators */}
-      <div className="absolute top-4 right-6 flex gap-1.5">
+      <div className="absolute top-4 right-6 flex gap-1.5 lg:top-6 lg:right-auto lg:left-1/2 lg:-translate-x-1/2">
         {serviceCards.map((_, index) => (
           <button
             key={index}

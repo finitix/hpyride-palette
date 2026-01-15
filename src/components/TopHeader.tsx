@@ -71,11 +71,12 @@ const TopHeader = () => {
   return (
     <>
       <header className="sticky top-0 z-40 bg-splash-bg text-splash-fg">
-        <div className="px-4 py-4 flex items-center justify-between">
+        <div className="px-4 py-4 flex items-center justify-between max-w-5xl mx-auto lg:px-6">
           <div className="flex items-center gap-3">
+            {/* Mobile menu - hidden on desktop */}
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <button className="p-1">
+                <button className="p-1 lg:hidden">
                   <Menu className="w-6 h-6" />
                 </button>
               </SheetTrigger>
@@ -115,7 +116,7 @@ const TopHeader = () => {
             <h1 className="text-2xl font-bold tracking-tight">HpyRide.com</h1>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 lg:gap-4">
             <button 
               onClick={() => navigate('/notifications')}
               className="p-2 rounded-full hover:bg-splash-fg/10 transition-colors relative"
@@ -129,16 +130,15 @@ const TopHeader = () => {
             </button>
             <button
               onClick={() => navigate('/donate')}
-              className="flex items-center gap-1.5 bg-gradient-to-r from-pink-500 to-red-500 text-white px-2.5 py-1.5 rounded-full text-[10px] font-bold shadow-md hover:shadow-lg transition-all hover:scale-105"
+              className="flex items-center gap-1.5 bg-gradient-to-r from-pink-500 to-red-500 text-white px-2.5 py-1.5 rounded-full text-[10px] font-bold shadow-md hover:shadow-lg transition-all hover:scale-105 lg:px-4 lg:py-2 lg:text-xs"
             >
-              <Heart className="w-3 h-3 fill-white" />
+              <Heart className="w-3 h-3 fill-white lg:w-4 lg:h-4" />
               <span>Donate</span>
-              <Sparkles className="w-2.5 h-2.5" />
+              <Sparkles className="w-2.5 h-2.5 lg:w-3 lg:h-3" />
             </button>
           </div>
         </div>
       </header>
-
     </>
   );
 };

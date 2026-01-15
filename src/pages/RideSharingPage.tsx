@@ -4,7 +4,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { ArrowLeft, Search, Plus, Navigation, Car, Bike, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import BottomNavigation from "@/components/BottomNavigation";
+import MainLayout from "@/components/layout/MainLayout";
 import SafetyForWomenCard from "@/components/SafetyForWomenCard";
 import VerifiedPoolerBadge from "@/components/VerifiedPoolerBadge";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -121,16 +121,16 @@ const RideSharingPage = () => {
 
   const getVehicleMarkerSVG = (category: string): string => {
     const colorMap: Record<string, string> = {
-      'bike': '#3B82F6',      // Blue
-      'auto': '#22C55E',      // Green
-      'taxi': '#EAB308',      // Yellow
-      'suv': '#8B5CF6',       // Purple
-      'van': '#F97316',       // Orange
-      'mini_bus': '#06B6D4',  // Cyan
-      'luxury': '#EC4899',    // Pink
-      'ev': '#10B981',        // Emerald
-      'car': '#000000',       // Black
-      'other': '#6B7280',     // Gray
+      'bike': '#3B82F6',
+      'auto': '#22C55E',
+      'taxi': '#EAB308',
+      'suv': '#8B5CF6',
+      'van': '#F97316',
+      'mini_bus': '#06B6D4',
+      'luxury': '#EC4899',
+      'ev': '#10B981',
+      'car': '#000000',
+      'other': '#6B7280',
     };
     const bgColor = colorMap[category] || '#000000';
     
@@ -156,118 +156,131 @@ const RideSharingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col pb-20">
-      <header className="sticky top-0 z-40 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate("/home")} className="p-1">
-            <ArrowLeft className="w-6 h-6 text-foreground" />
-          </button>
-          <h1 className="text-lg font-semibold text-foreground">Ride Sharing</h1>
-        </div>
-        <button onClick={() => navigate("/my-rides")} className="text-sm font-medium text-foreground">
-          My Rides
-        </button>
-      </header>
-
-      {/* Safety for Women + Search Bar */}
-      <div className="px-4 py-3 bg-background border-b border-border space-y-3">
-        <SafetyForWomenCard />
-        <button
-          onClick={() => navigate("/book-ride")}
-          className="w-full flex items-center gap-3 bg-muted rounded-xl px-4 py-3"
-        >
-          <Search className="w-5 h-5 text-muted-foreground" />
-          <span className="text-muted-foreground">Where to?</span>
-        </button>
-        {/* Banner Ad */}
-        <InlineBannerAd />
-      </div>
-
-      <div className="relative flex-1">
-        <div ref={mapContainer} className="absolute inset-0" />
-
-        {/* My Location Button */}
-        <button
-          onClick={centerOnUser}
-          className="absolute top-4 right-4 z-10 p-3 bg-card rounded-full shadow-lg"
-        >
-          <Navigation className="w-5 h-5 text-foreground" />
-        </button>
-
-        {/* Ride Detail Popup */}
-        {selectedRide && (
-          <div className="absolute bottom-20 left-4 right-4 z-30 bg-card rounded-2xl shadow-xl p-4 animate-slide-up">
-            <button 
-              onClick={() => setSelectedRide(null)}
-              className="absolute top-3 right-3 p-1"
-            >
-              <X className="w-5 h-5 text-muted-foreground" />
+    <MainLayout>
+      <div className="min-h-screen bg-background flex flex-col pb-20 lg:pb-0">
+        <header className="sticky top-0 z-40 bg-background border-b border-border px-4 py-3 flex items-center justify-between lg:px-6">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate("/home")} className="p-1 lg:hidden">
+              <ArrowLeft className="w-6 h-6 text-foreground" />
             </button>
-            
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
-                {selectedRide.vehicles?.category === 'bike' ? (
-                  <Bike className="w-5 h-5" />
-                ) : (
-                  <Car className="w-5 h-5" />
-                )}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-foreground">{selectedRide.vehicles?.name}</p>
-                  <VerifiedPoolerBadge isVerified={true} rating={4.8} totalRides={125} size="sm" />
-                </div>
-                <p className="text-sm text-muted-foreground">{selectedRide.vehicles?.number}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xl font-bold text-foreground">₹{selectedRide.total_price?.toFixed(0)}</p>
-                <p className="text-xs text-muted-foreground">{selectedRide.seats_available} seats</p>
-              </div>
-            </div>
-            
-            <div className="space-y-1.5 mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                <p className="text-sm text-foreground line-clamp-1">{selectedRide.pickup_location}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-orange-500" />
-                <p className="text-sm text-foreground line-clamp-1">{selectedRide.drop_location}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-3 text-sm text-muted-foreground mb-4">
-              <span>{new Date(selectedRide.ride_date).toLocaleDateString()}</span>
-              <span>•</span>
-              <span>{selectedRide.ride_time}</span>
-              <span>•</span>
-              <span>{selectedRide.distance_km?.toFixed(1)} km</span>
-            </div>
-            
-            <Button 
-              variant="hero" 
-              className="w-full"
-              onClick={() => navigate(`/booking/${selectedRide.id}`)}
-            >
-              Book Now
-            </Button>
+            <h1 className="text-lg font-semibold text-foreground lg:text-xl">Ride Sharing</h1>
           </div>
-        )}
+          <button onClick={() => navigate("/my-rides")} className="text-sm font-medium text-foreground hover:underline">
+            My Rides
+          </button>
+        </header>
 
-        {/* Offer Ride FAB - Centered */}
-        <button
-          onClick={() => navigate("/post-ride")}
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-foreground text-background rounded-full px-6 py-3 shadow-xl flex items-center gap-2 font-semibold"
-        >
-          <Plus className="w-5 h-5" />
-          Offer Ride
-        </button>
-      </div>
+        {/* Desktop: Two column layout */}
+        <div className="flex-1 flex flex-col lg:flex-row">
+          {/* Left sidebar on desktop */}
+          <div className="px-4 py-3 bg-background border-b border-border space-y-3 lg:w-96 lg:border-b-0 lg:border-r lg:p-6 lg:overflow-y-auto lg:max-h-[calc(100vh-65px)]">
+            <SafetyForWomenCard />
+            <button
+              onClick={() => navigate("/book-ride")}
+              className="w-full flex items-center gap-3 bg-muted rounded-xl px-4 py-3 hover:bg-muted/80 transition-colors"
+            >
+              <Search className="w-5 h-5 text-muted-foreground" />
+              <span className="text-muted-foreground">Where to?</span>
+            </button>
+            <InlineBannerAd />
+            
+            {/* Desktop: Offer Ride button */}
+            <div className="hidden lg:block pt-4">
+              <Button
+                variant="hero"
+                className="w-full"
+                onClick={() => navigate("/post-ride")}
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Offer a Ride
+              </Button>
+            </div>
+          </div>
 
-      <div className="relative z-50">
-        <BottomNavigation />
+          {/* Map section */}
+          <div className="relative flex-1 min-h-[400px] lg:min-h-0">
+            <div ref={mapContainer} className="absolute inset-0" />
+
+            {/* My Location Button */}
+            <button
+              onClick={centerOnUser}
+              className="absolute top-4 right-4 z-10 p-3 bg-card rounded-full shadow-lg hover:shadow-xl transition-shadow"
+            >
+              <Navigation className="w-5 h-5 text-foreground" />
+            </button>
+
+            {/* Ride Detail Popup */}
+            {selectedRide && (
+              <div className="absolute bottom-20 left-4 right-4 z-30 bg-card rounded-2xl shadow-xl p-4 animate-slide-up lg:bottom-4 lg:left-auto lg:right-4 lg:w-96">
+                <button 
+                  onClick={() => setSelectedRide(null)}
+                  className="absolute top-3 right-3 p-1"
+                >
+                  <X className="w-5 h-5 text-muted-foreground" />
+                </button>
+                
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                    {selectedRide.vehicles?.category === 'bike' ? (
+                      <Bike className="w-5 h-5" />
+                    ) : (
+                      <Car className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-foreground">{selectedRide.vehicles?.name}</p>
+                      <VerifiedPoolerBadge isVerified={true} rating={4.8} totalRides={125} size="sm" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">{selectedRide.vehicles?.number}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xl font-bold text-foreground">₹{selectedRide.total_price?.toFixed(0)}</p>
+                    <p className="text-xs text-muted-foreground">{selectedRide.seats_available} seats</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-1.5 mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                    <p className="text-sm text-foreground line-clamp-1">{selectedRide.pickup_location}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-orange-500" />
+                    <p className="text-sm text-foreground line-clamp-1">{selectedRide.drop_location}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3 text-sm text-muted-foreground mb-4">
+                  <span>{new Date(selectedRide.ride_date).toLocaleDateString()}</span>
+                  <span>•</span>
+                  <span>{selectedRide.ride_time}</span>
+                  <span>•</span>
+                  <span>{selectedRide.distance_km?.toFixed(1)} km</span>
+                </div>
+                
+                <Button 
+                  variant="hero" 
+                  className="w-full"
+                  onClick={() => navigate(`/booking/${selectedRide.id}`)}
+                >
+                  Book Now
+                </Button>
+              </div>
+            )}
+
+            {/* Mobile: Offer Ride FAB */}
+            <button
+              onClick={() => navigate("/post-ride")}
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-foreground text-background rounded-full px-6 py-3 shadow-xl flex items-center gap-2 font-semibold lg:hidden"
+            >
+              <Plus className="w-5 h-5" />
+              Offer Ride
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+    </MainLayout>
   );
 };
 
