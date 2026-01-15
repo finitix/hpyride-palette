@@ -97,7 +97,7 @@ const AuthPage = () => {
   };
 
   // Phone.email verification handler
-  const handlePhoneVerified = async (jsonUrl: string, phoneNumber: string) => {
+  const handlePhoneVerified = async (jsonUrl: string) => {
     setLoading(true);
     setUserJsonUrl(jsonUrl);
     setPhoneStep("verifying");
