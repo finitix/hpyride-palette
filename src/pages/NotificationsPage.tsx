@@ -4,7 +4,7 @@ import { ArrowLeft, Bell, Check, Trash2, Car, MapPin, User, Shield, Megaphone } 
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import BottomNavigation from "@/components/BottomNavigation";
+import MainLayout from "@/components/layout/MainLayout";
 
 interface Notification {
   id: string;
@@ -161,84 +161,86 @@ const NotificationsPage = () => {
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col pb-20">
-      <header className="sticky top-0 z-40 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-1">
-            <ArrowLeft className="w-6 h-6 text-foreground" />
-          </button>
-          <h1 className="text-lg font-semibold text-foreground">Notifications</h1>
+    <MainLayout>
+      <div className="min-h-screen bg-background flex flex-col pb-20 lg:pb-8">
+        <header className="sticky top-0 z-40 bg-background border-b border-border px-4 py-3 flex items-center justify-between lg:px-6">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate(-1)} className="p-1 lg:hidden">
+              <ArrowLeft className="w-6 h-6 text-foreground" />
+            </button>
+            <h1 className="text-lg font-semibold text-foreground lg:text-xl">Notifications</h1>
+            {unreadCount > 0 && (
+              <span className="bg-destructive text-destructive-foreground text-xs px-2 py-0.5 rounded-full">
+                {unreadCount}
+              </span>
+            )}
+          </div>
           {unreadCount > 0 && (
-            <span className="bg-destructive text-destructive-foreground text-xs px-2 py-0.5 rounded-full">
-              {unreadCount}
-            </span>
+            <Button variant="ghost" size="sm" onClick={markAllAsRead}>
+              <Check className="w-4 h-4 mr-1" />
+              Mark all read
+            </Button>
           )}
-        </div>
-        {unreadCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={markAllAsRead}>
-            <Check className="w-4 h-4 mr-1" />
-            Mark all read
-          </Button>
-        )}
-      </header>
+        </header>
 
-      <div className="flex-1 p-4">
-        {loading ? (
-          <div className="flex items-center justify-center h-40">
-            <div className="animate-spin w-8 h-8 border-2 border-foreground border-t-transparent rounded-full" />
-          </div>
-        ) : notifications.length === 0 ? (
-          <div className="text-center py-12">
-            <Bell className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">No notifications yet</h3>
-            <p className="text-sm text-muted-foreground">You'll see updates about your rides and bookings here</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {notifications.map((notification) => (
-              <div 
-                key={notification.id} 
-                className={`bg-card border border-border rounded-xl p-4 transition-all ${
-                  !notification.is_read ? 'ring-2 ring-primary/20' : ''
-                }`}
-                onClick={() => !notification.is_read && markAsRead(notification.id)}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`p-2 rounded-full ${getNotificationColor(notification.type)}`}>
-                    {getNotificationIcon(notification.type)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-foreground">{notification.title}</h4>
-                        <p className="text-sm text-muted-foreground mt-1">{notification.body}</p>
-                      </div>
-                      {!notification.is_read && (
-                        <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-2" />
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-xs text-muted-foreground">{formatDate(notification.created_at)}</span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteNotification(notification.id);
-                        }}
-                        className="p-1 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+        <div className="flex-1 p-4 lg:px-6">
+          <div className="max-w-3xl mx-auto">
+            {loading ? (
+              <div className="flex items-center justify-center h-40">
+                <div className="animate-spin w-8 h-8 border-2 border-foreground border-t-transparent rounded-full" />
               </div>
-            ))}
+            ) : notifications.length === 0 ? (
+              <div className="text-center py-12">
+                <Bell className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">No notifications yet</h3>
+                <p className="text-sm text-muted-foreground">You'll see updates about your rides and bookings here</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {notifications.map((notification) => (
+                  <div 
+                    key={notification.id} 
+                    className={`bg-card border border-border rounded-xl p-4 transition-all cursor-pointer hover:shadow-md ${
+                      !notification.is_read ? 'ring-2 ring-primary/20' : ''
+                    }`}
+                    onClick={() => !notification.is_read && markAsRead(notification.id)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-full ${getNotificationColor(notification.type)}`}>
+                        {getNotificationIcon(notification.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-foreground">{notification.title}</h4>
+                            <p className="text-sm text-muted-foreground mt-1">{notification.body}</p>
+                          </div>
+                          {!notification.is_read && (
+                            <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-2" />
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-xs text-muted-foreground">{formatDate(notification.created_at)}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteNotification(notification.id);
+                            }}
+                            className="p-1 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
-
-      <BottomNavigation />
-    </div>
+    </MainLayout>
   );
 };
 

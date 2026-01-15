@@ -1,7 +1,7 @@
 import { ArrowLeft, MessageCircle, Phone, Mail, HelpCircle, FileText, Shield, CreditCard, Car, AlertTriangle, MapPin, Users, Clock, Star, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import BottomNavigation from "@/components/BottomNavigation";
+import MainLayout from "@/components/layout/MainLayout";
 import { toast } from "sonner";
 import {
   Accordion,
@@ -150,156 +150,161 @@ const SupportPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <header className="sticky top-0 z-40 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="p-1">
-          <ArrowLeft className="w-6 h-6 text-foreground" />
-        </button>
-        <h1 className="text-lg font-semibold text-foreground">Help & Support</h1>
-      </header>
+    <MainLayout>
+      <div className="min-h-screen bg-background pb-20 lg:pb-8">
+        <header className="sticky top-0 z-40 bg-background border-b border-border px-4 py-3 flex items-center gap-3 lg:px-6">
+          <button onClick={() => navigate(-1)} className="p-1 lg:hidden">
+            <ArrowLeft className="w-6 h-6 text-foreground" />
+          </button>
+          <h1 className="text-lg font-semibold text-foreground lg:text-xl">Help & Support</h1>
+        </header>
 
-      <div className="px-4 py-6 space-y-6">
-        {/* Contact Options */}
-        <section>
-          <h2 className="text-lg font-bold text-foreground mb-4">Chat with Us</h2>
-          <Button
-            variant="outline"
-            className="w-full flex items-center justify-center gap-3 h-14 mb-4"
-            onClick={() => handleContact('whatsapp')}
-          >
-            <MessageCircle className="w-6 h-6 text-green-500" />
-            <div className="text-left">
-              <span className="font-medium">Chat on WhatsApp</span>
-              <p className="text-xs text-muted-foreground">+91 88976 11021</p>
-            </div>
-          </Button>
-          
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              variant="outline"
-              className="flex flex-col items-center gap-2 h-auto py-4"
-              onClick={() => handleContact('support')}
-            >
-              <Mail className="w-6 h-6 text-blue-500" />
-              <span className="text-xs">Support Mail</span>
-              <span className="text-[10px] text-muted-foreground">hpyrideindia@gmail.com</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="flex flex-col items-center gap-2 h-auto py-4"
-              onClick={() => handleContact('grievance')}
-            >
-              <Mail className="w-6 h-6 text-orange-500" />
-              <span className="text-xs">Grievance</span>
-              <span className="text-[10px] text-muted-foreground">hpyride.dcgroup@gmail.com</span>
-            </Button>
-          </div>
-        </section>
-
-        {/* FAQ Section */}
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <HelpCircle className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-bold text-foreground">Frequently Asked Questions</h2>
-          </div>
-          
-          <div className="space-y-4">
-            {faqCategories.map((category, categoryIndex) => (
-              <div key={categoryIndex} className="bg-card border border-border rounded-xl overflow-hidden">
-                <h3 className="font-semibold text-foreground bg-secondary px-4 py-3">
-                  {category.title}
-                </h3>
-                <Accordion type="single" collapsible className="px-4">
-                  {category.items.map((item, itemIndex) => (
-                    <AccordionItem key={itemIndex} value={`${categoryIndex}-${itemIndex}`}>
-                      <AccordionTrigger className="text-left text-sm">
-                        {item.question}
-                      </AccordionTrigger>
-                      <AccordionContent className="text-muted-foreground text-sm">
-                        {item.answer}
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
+        <div className="px-4 py-6 space-y-6 lg:px-6">
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Contact Options */}
+            <section>
+              <h2 className="text-lg font-bold text-foreground mb-4">Chat with Us</h2>
+              <Button
+                variant="outline"
+                className="w-full lg:w-auto flex items-center justify-center gap-3 h-14 mb-4"
+                onClick={() => handleContact('whatsapp')}
+              >
+                <MessageCircle className="w-6 h-6 text-green-500" />
+                <div className="text-left">
+                  <span className="font-medium">Chat on WhatsApp</span>
+                  <p className="text-xs text-muted-foreground">+91 88976 11021</p>
+                </div>
+              </Button>
+              
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <Button
+                  variant="outline"
+                  className="flex flex-col items-center gap-2 h-auto py-4"
+                  onClick={() => handleContact('support')}
+                >
+                  <Mail className="w-6 h-6 text-blue-500" />
+                  <span className="text-xs">Support Mail</span>
+                  <span className="text-[10px] text-muted-foreground">hpyrideindia@gmail.com</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex flex-col items-center gap-2 h-auto py-4"
+                  onClick={() => handleContact('grievance')}
+                >
+                  <Mail className="w-6 h-6 text-orange-500" />
+                  <span className="text-xs">Grievance</span>
+                  <span className="text-[10px] text-muted-foreground">hpyride.dcgroup@gmail.com</span>
+                </Button>
               </div>
-            ))}
-          </div>
-        </section>
+            </section>
 
-        {/* Quick Links */}
-        <section>
-          <h2 className="text-lg font-bold text-foreground mb-4">Quick Links</h2>
-          <div className="space-y-2">
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/terms')}
-            >
-              <FileText className="w-5 h-5 mr-3" />
-              Terms & Conditions
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/privacy')}
-            >
-              <Shield className="w-5 h-5 mr-3" />
-              Privacy Policy
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/account-deletion')}
-            >
-              <AlertTriangle className="w-5 h-5 mr-3" />
-              Account Deletion
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/refund-policy')}
-            >
-              <CreditCard className="w-5 h-5 mr-3" />
-              Refund & Cancellation Policy
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate('/about')}
-            >
-              <HelpCircle className="w-5 h-5 mr-3" />
-              About Us
-            </Button>
-          </div>
-        </section>
+            {/* FAQ Section */}
+            <section>
+              <div className="flex items-center gap-2 mb-4">
+                <HelpCircle className="w-5 h-5 text-primary" />
+                <h2 className="text-lg font-bold text-foreground">Frequently Asked Questions</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {faqCategories.map((category, categoryIndex) => (
+                  <div key={categoryIndex} className="bg-card border border-border rounded-xl overflow-hidden">
+                    <h3 className="font-semibold text-foreground bg-secondary px-4 py-3">
+                      {category.title}
+                    </h3>
+                    <Accordion type="single" collapsible className="px-4">
+                      {category.items.map((item, itemIndex) => (
+                        <AccordionItem key={itemIndex} value={`${categoryIndex}-${itemIndex}`}>
+                          <AccordionTrigger className="text-left text-sm">
+                            {item.question}
+                          </AccordionTrigger>
+                          <AccordionContent className="text-muted-foreground text-sm">
+                            {item.answer}
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </div>
+                ))}
+              </div>
+            </section>
 
-        {/* Support Hours */}
-        <section className="bg-secondary rounded-xl p-4 text-center">
-          <Clock className="w-6 h-6 text-primary mx-auto mb-2" />
-          <p className="font-semibold text-foreground">Support Hours</p>
-          <p className="text-sm text-muted-foreground">9:00 AM - 9:00 PM (Mon - Sat)</p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Average response time: 2-4 hours
-          </p>
-        </section>
+            {/* Quick Links */}
+            <section>
+              <h2 className="text-lg font-bold text-foreground mb-4">Quick Links</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/terms')}
+                >
+                  <FileText className="w-5 h-5 mr-3" />
+                  Terms & Conditions
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/privacy')}
+                >
+                  <Shield className="w-5 h-5 mr-3" />
+                  Privacy Policy
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/account-deletion')}
+                >
+                  <AlertTriangle className="w-5 h-5 mr-3" />
+                  Account Deletion
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/refund-policy')}
+                >
+                  <CreditCard className="w-5 h-5 mr-3" />
+                  Refund & Cancellation Policy
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/about')}
+                >
+                  <HelpCircle className="w-5 h-5 mr-3" />
+                  About Us
+                </Button>
+              </div>
+            </section>
 
-        {/* Emergency */}
-        <section className="bg-destructive/10 border border-destructive/20 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-5 h-5 text-destructive" />
-            <h3 className="font-semibold text-foreground">Emergency?</h3>
+            {/* Bottom Cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Support Hours */}
+              <section className="bg-secondary rounded-xl p-4 text-center">
+                <Clock className="w-6 h-6 text-primary mx-auto mb-2" />
+                <p className="font-semibold text-foreground">Support Hours</p>
+                <p className="text-sm text-muted-foreground">9:00 AM - 9:00 PM (Mon - Sat)</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Average response time: 2-4 hours
+                </p>
+              </section>
+
+              {/* Emergency */}
+              <section className="bg-destructive/10 border border-destructive/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="w-5 h-5 text-destructive" />
+                  <h3 className="font-semibold text-foreground">Emergency?</h3>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  If you're in immediate danger, please contact local emergency services (100/112) first, then use the SOS feature in the app.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  For safety concerns: emergency@hpyride.com
+                </p>
+              </section>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground mb-3">
-            If you're in immediate danger, please contact local emergency services (100/112) first, then use the SOS feature in the app.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            For safety concerns: emergency@hpyride.com
-          </p>
-        </section>
+        </div>
       </div>
-
-      <BottomNavigation />
-    </div>
+    </MainLayout>
   );
 };
 
