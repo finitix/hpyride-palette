@@ -1,61 +1,58 @@
-import { useEffect, useCallback } from 'react';
-import { Phone, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useEffect, useRef } from 'react';
+import { Loader2 } from 'lucide-react';
 
 interface PhoneEmailButtonProps {
-  onVerified: (userJsonUrl: string, phoneNumber: string) => void;
+  onVerified: (userJsonUrl: string) => void;
   loading?: boolean;
-  disabled?: boolean;
-  buttonText?: string;
 }
 
 declare global {
   interface Window {
-    phoneEmailListener: (userObj: { user_json_url: string; user_phone_number?: string }) => void;
+    phoneEmailListener: (userObj: { user_json_url: string }) => void;
   }
 }
 
 const PhoneEmailButton = ({ 
   onVerified, 
   loading = false, 
-  disabled = false,
-  buttonText = "Verify with Phone"
 }: PhoneEmailButtonProps) => {
-  
-  const handlePhoneEmailResponse = useCallback((userObj: { user_json_url: string; user_phone_number?: string }) => {
-    console.log('Phone.email verification response:', userObj);
-    if (userObj.user_json_url) {
-      onVerified(userObj.user_json_url, userObj.user_phone_number || '');
-    }
-  }, [onVerified]);
+  const buttonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Set up the global listener for phone.email
-    window.phoneEmailListener = handlePhoneEmailResponse;
+    // Define the listener function
+    window.phoneEmailListener = function(userObj) {
+      const user_json_url = userObj.user_json_url;
+      console.log('Phone.email verification callback received:', user_json_url);
+      
+      if (user_json_url) {
+        onVerified(user_json_url);
+      }
+    };
 
-    // Load the phone.email script
-    const existingScript = document.getElementById('phone-email-script');
-    if (!existingScript) {
-      const script = document.createElement('script');
-      script.id = 'phone-email-script';
-      script.src = 'https://www.phone.email/sign_in_button_v1.js';
-      script.async = true;
-      document.body.appendChild(script);
+    // Load the external script
+    if (buttonRef.current) {
+      const existingScript = buttonRef.current.querySelector('script');
+      if (!existingScript) {
+        const script = document.createElement('script');
+        script.src = "https://www.phone.email/sign_in_button_v1.js";
+        script.async = true;
+        buttonRef.current.appendChild(script);
+      }
     }
 
     return () => {
-      // Cleanup
-      delete (window as any).phoneEmailListener;
+      // Cleanup the listener function when the component unmounts
+      window.phoneEmailListener = () => {};
     };
-  }, [handlePhoneEmailResponse]);
+  }, [onVerified]);
 
   return (
     <div className="w-full">
       {/* Phone.email button container */}
       <div 
+        ref={buttonRef}
         className="pe_signin_button" 
-        data-client-id="17aborcd2xey4ew99fv70xq6tnpvvt1h"
-        data-country-code="+91"
+        data-client-id="15695407177920574360"
         style={{ display: 'flex', justifyContent: 'center' }}
       />
       
