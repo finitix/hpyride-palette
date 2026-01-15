@@ -200,9 +200,9 @@ const AuthPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col lg:items-center lg:justify-center">
       {/* Header */}
-      <header className="p-4 flex items-center">
+      <header className="p-4 flex items-center lg:absolute lg:top-0 lg:left-0 lg:right-0">
         <button 
           onClick={() => {
             if (authMethod === "phone" && phoneStep !== "phone") {
@@ -218,8 +218,8 @@ const AuthPage = () => {
         <span className="ml-2 text-lg font-bold text-foreground">HpyRide.com</span>
       </header>
 
-      {/* Content */}
-      <div className="flex-1 px-6 py-8 animate-fade-in">
+      {/* Content - Centered on desktop */}
+      <div className="flex-1 px-6 py-8 animate-fade-in lg:flex-none lg:w-full lg:max-w-md lg:p-8 lg:bg-card lg:rounded-2xl lg:shadow-xl lg:border lg:border-border">
         {/* Email Auth Method */}
         {authMethod === "email" && (
           <>
