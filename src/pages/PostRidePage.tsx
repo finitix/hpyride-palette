@@ -79,11 +79,8 @@ const PostRidePage = () => {
   const [insuranceFile, setInsuranceFile] = useState<File | null>(null);
   const [pollutionFile, setPollutionFile] = useState<File | null>(null);
   
-  // Vehicle Images
-  const [frontImage, setFrontImage] = useState<File | null>(null);
-  const [rearImage, setRearImage] = useState<File | null>(null);
-  const [leftImage, setLeftImage] = useState<File | null>(null);
-  const [rightImage, setRightImage] = useState<File | null>(null);
+  // Vehicle Images - Only one with numberplate
+  const [vehicleImage, setVehicleImage] = useState<File | null>(null);
 
   // Step 3: Pricing
   const [seatsAvailable, setSeatsAvailable] = useState(1);
@@ -93,6 +90,7 @@ const PostRidePage = () => {
   const [musicAllowed, setMusicAllowed] = useState(true);
   const [femaleOnly, setFemaleOnly] = useState(false);
   const [luggageAllowed, setLuggageAllowed] = useState(true);
+  const [petsAllowed, setPetsAllowed] = useState(false);
   const [pickupFlexibility, setPickupFlexibility] = useState("exact");
   const [confirmTerms, setConfirmTerms] = useState(false);
 
@@ -299,15 +297,12 @@ const PostRidePage = () => {
       if (!vehicleId && vehicleName && vehicleNumber) {
         // Upload documents
         let rcBookUrl = null, insuranceUrl = null, pollutionUrl = null;
-        let frontUrl = null, rearUrl = null, leftUrl = null, rightUrl = null;
+        let vehicleImageUrl = null;
 
         if (rcBookFile) rcBookUrl = await uploadFile(rcBookFile, 'vehicle-documents', 'rc');
         if (insuranceFile) insuranceUrl = await uploadFile(insuranceFile, 'vehicle-documents', 'insurance');
         if (pollutionFile) pollutionUrl = await uploadFile(pollutionFile, 'vehicle-documents', 'pollution');
-        if (frontImage) frontUrl = await uploadFile(frontImage, 'vehicle-images', 'front');
-        if (rearImage) rearUrl = await uploadFile(rearImage, 'vehicle-images', 'rear');
-        if (leftImage) leftUrl = await uploadFile(leftImage, 'vehicle-images', 'left');
-        if (rightImage) rightUrl = await uploadFile(rightImage, 'vehicle-images', 'right');
+        if (vehicleImage) vehicleImageUrl = await uploadFile(vehicleImage, 'vehicle-images', 'vehicle');
 
         const { data: newVehicle, error: vehicleError } = await supabase
           .from('vehicles')
@@ -321,9 +316,7 @@ const PostRidePage = () => {
             rc_book_url: rcBookUrl,
             insurance_url: insuranceUrl,
             pollution_url: pollutionUrl,
-            front_image_url: frontUrl,
-            rear_image_url: rearUrl,
-            side_image_url: leftUrl || rightUrl,
+            front_image_url: vehicleImageUrl,
           })
           .select()
           .single();
@@ -501,7 +494,7 @@ const PostRidePage = () => {
               
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm text-muted-foreground mb-1 block">Date</label>
+                  <label className="text-sm text-muted-foreground mb-1 block">Starting Date</label>
                   <Input
                     type="date"
                     value={rideDate}
@@ -510,7 +503,7 @@ const PostRidePage = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-muted-foreground mb-1 block">Time</label>
+                  <label className="text-sm text-muted-foreground mb-1 block">Starting Time</label>
                   <Input
                     type="time"
                     value={rideTime}
@@ -715,15 +708,11 @@ const PostRidePage = () => {
                 </div>
               </div>
 
-              {/* Vehicle Images Section */}
+              {/* Vehicle Image Section - Single image with numberplate */}
               <div>
-                <label className="text-sm text-muted-foreground mb-2 block">Vehicle Images</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <FileUploadButton label="Front" file={frontImage} setFile={setFrontImage} />
-                  <FileUploadButton label="Rear" file={rearImage} setFile={setRearImage} />
-                  <FileUploadButton label="Left Side" file={leftImage} setFile={setLeftImage} />
-                  <FileUploadButton label="Right Side" file={rightImage} setFile={setRightImage} />
-                </div>
+                <label className="text-sm text-muted-foreground mb-2 block">Vehicle Image (with Number Plate visible)</label>
+                <FileUploadButton label="Vehicle Photo" file={vehicleImage} setFile={setVehicleImage} />
+                <p className="text-xs text-muted-foreground mt-1">Upload a clear photo showing your vehicle with number plate visible</p>
               </div>
             </div>
 
@@ -746,7 +735,7 @@ const PostRidePage = () => {
               variant="hero"
               className="w-full"
               onClick={() => setStep(3)}
-              disabled={!selectedVehicleId && (!vehicleName || !vehicleNumber || !rcBookFile || !insuranceFile || !frontImage || !rearImage)}
+              disabled={!selectedVehicleId && (!vehicleName || !vehicleNumber || !rcBookFile || !insuranceFile || !vehicleImage)}
             >
               Continue
               <ChevronRight className="w-4 h-4 ml-2" />
@@ -758,7 +747,9 @@ const PostRidePage = () => {
           <div className="space-y-4">
             <div className="bg-card border border-border rounded-xl p-4 space-y-4">
               <div>
-                <label className="text-sm text-muted-foreground mb-2 block">Seats Available</label>
+                <label className="text-sm text-muted-foreground mb-2 block">
+                  Seats Available {vehicleCategory === 'bike' ? '(Max 1 for bike)' : vehicleCategory === 'car' ? '(Max 6 for car)' : ''}
+                </label>
                 {!manualSeats ? (
                   <div className="flex items-center gap-4">
                     <button
@@ -769,26 +760,35 @@ const PostRidePage = () => {
                     </button>
                     <span className="text-2xl font-bold text-foreground w-8 text-center">{seatsAvailable}</span>
                     <button
-                      onClick={() => setSeatsAvailable(Math.min(20, seatsAvailable + 1))}
+                      onClick={() => {
+                        const maxSeats = vehicleCategory === 'bike' ? 1 : vehicleCategory === 'car' ? 6 : 20;
+                        setSeatsAvailable(Math.min(maxSeats, seatsAvailable + 1));
+                      }}
                       className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-lg"
+                      disabled={vehicleCategory === 'bike' && seatsAvailable >= 1}
                     >
                       +
                     </button>
-                    <button
-                      onClick={() => setManualSeats(true)}
-                      className="text-sm text-muted-foreground underline ml-4"
-                    >
-                      Enter manually
-                    </button>
+                    {vehicleCategory !== 'bike' && (
+                      <button
+                        onClick={() => setManualSeats(true)}
+                        className="text-sm text-muted-foreground underline ml-4"
+                      >
+                        Enter manually
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
                     <Input
                       type="number"
                       min={1}
-                      max={50}
+                      max={vehicleCategory === 'bike' ? 1 : vehicleCategory === 'car' ? 6 : 50}
                       value={seatsAvailable}
-                      onChange={(e) => setSeatsAvailable(Number(e.target.value))}
+                      onChange={(e) => {
+                        const maxSeats = vehicleCategory === 'bike' ? 1 : vehicleCategory === 'car' ? 6 : 50;
+                        setSeatsAvailable(Math.min(maxSeats, Number(e.target.value)));
+                      }}
                       className="w-24"
                     />
                     <button
@@ -803,20 +803,23 @@ const PostRidePage = () => {
 
               <div>
                 <label className="text-sm text-muted-foreground mb-2 block">
-                  Price per KM: ₹{pricePerKm}
+                  Set Total Price: ₹{pricePerKm * distance > 0 ? (pricePerKm * distance).toFixed(0) : pricePerKm}
                 </label>
                 <input
                   type="range"
                   min={vehicleType === 'private' ? 2 : 3}
-                  max={vehicleType === 'private' ? 7 : 15}
+                  max={vehicleType === 'private' ? 5 : 15}
                   value={pricePerKm}
                   onChange={(e) => setPricePerKm(Number(e.target.value))}
                   className="w-full"
                 />
                 <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                  <span>₹{vehicleType === 'private' ? 2 : 3}</span>
-                  <span>₹{vehicleType === 'private' ? 7 : 15}</span>
+                  <span>₹{vehicleType === 'private' ? 2 : 3}/km</span>
+                  <span>₹{vehicleType === 'private' ? 5 : 15}/km</span>
                 </div>
+                {vehicleType === 'private' && (
+                  <p className="text-xs text-muted-foreground mt-1">Private vehicles: Max ₹5/km</p>
+                )}
               </div>
 
               {distance > 0 && (
@@ -835,6 +838,7 @@ const PostRidePage = () => {
                 { label: 'Music Allowed', value: musicAllowed, setter: setMusicAllowed },
                 { label: 'Female Only', value: femaleOnly, setter: setFemaleOnly },
                 { label: 'Luggage Allowed', value: luggageAllowed, setter: setLuggageAllowed },
+                { label: 'Pets Allowed', value: petsAllowed, setter: setPetsAllowed },
               ].map((pref) => (
                 <div key={pref.label} className="flex items-center justify-between">
                   <span className="text-sm text-foreground">{pref.label}</span>
@@ -893,7 +897,7 @@ const PostRidePage = () => {
               
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Date & Time</span>
+                  <span className="text-muted-foreground">Starting Date & Time</span>
                   <span className="text-foreground font-medium">
                     {new Date(rideDate).toLocaleDateString()} • {rideTime}
                   </span>
@@ -904,7 +908,9 @@ const PostRidePage = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Duration</span>
-                  <span className="text-foreground font-medium">{duration} mins</span>
+                  <span className="text-foreground font-medium">
+                    {Math.floor(duration / 60) > 0 ? `${Math.floor(duration / 60)} hrs` : ''} {duration % 60 > 0 ? `${duration % 60} min` : ''}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Vehicle</span>
@@ -913,10 +919,6 @@ const PostRidePage = () => {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Seats</span>
                   <span className="text-foreground font-medium">{seatsAvailable}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Price/km</span>
-                  <span className="text-foreground font-medium">₹{pricePerKm}</span>
                 </div>
                 
                 <div className="border-t border-border pt-3 mt-3">

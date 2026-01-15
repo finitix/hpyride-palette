@@ -139,12 +139,12 @@ const SupportPage = () => {
   ];
 
   const handleContact = (type: string) => {
-    if (type === 'phone') {
-      window.open('tel:+919876543210', '_self');
-    } else if (type === 'email') {
-      window.open('mailto:support@hpyride.com', '_self');
+    if (type === 'support') {
+      window.open('mailto:hpyrideindia@gmail.com', '_self');
+    } else if (type === 'grievance') {
+      window.open('mailto:hpyride.dcgroup@gmail.com', '_self');
     } else if (type === 'whatsapp') {
-      window.open('https://wa.me/919876543210?text=Hi, I need help with HpyRide', '_blank');
+      window.open('https://wa.me/918897611021?text=Hi, I need help with HpyRide', '_blank');
     }
     toast.success(`Opening ${type}...`);
   };
@@ -161,31 +161,37 @@ const SupportPage = () => {
       <div className="px-4 py-6 space-y-6">
         {/* Contact Options */}
         <section>
-          <h2 className="text-lg font-bold text-foreground mb-4">Contact Us</h2>
-          <div className="grid grid-cols-3 gap-3">
+          <h2 className="text-lg font-bold text-foreground mb-4">Chat with Us</h2>
+          <Button
+            variant="outline"
+            className="w-full flex items-center justify-center gap-3 h-14 mb-4"
+            onClick={() => handleContact('whatsapp')}
+          >
+            <MessageCircle className="w-6 h-6 text-green-500" />
+            <div className="text-left">
+              <span className="font-medium">Chat on WhatsApp</span>
+              <p className="text-xs text-muted-foreground">+91 88976 11021</p>
+            </div>
+          </Button>
+          
+          <div className="grid grid-cols-2 gap-3">
             <Button
               variant="outline"
               className="flex flex-col items-center gap-2 h-auto py-4"
-              onClick={() => handleContact('phone')}
-            >
-              <Phone className="w-6 h-6 text-primary" />
-              <span className="text-xs">Call Us</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="flex flex-col items-center gap-2 h-auto py-4"
-              onClick={() => handleContact('whatsapp')}
-            >
-              <MessageCircle className="w-6 h-6 text-green-500" />
-              <span className="text-xs">WhatsApp</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="flex flex-col items-center gap-2 h-auto py-4"
-              onClick={() => handleContact('email')}
+              onClick={() => handleContact('support')}
             >
               <Mail className="w-6 h-6 text-blue-500" />
-              <span className="text-xs">Email</span>
+              <span className="text-xs">Support Mail</span>
+              <span className="text-[10px] text-muted-foreground">hpyrideindia@gmail.com</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="flex flex-col items-center gap-2 h-auto py-4"
+              onClick={() => handleContact('grievance')}
+            >
+              <Mail className="w-6 h-6 text-orange-500" />
+              <span className="text-xs">Grievance</span>
+              <span className="text-[10px] text-muted-foreground">hpyride.dcgroup@gmail.com</span>
             </Button>
           </div>
         </section>
